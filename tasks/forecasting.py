@@ -37,6 +37,14 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
     train_data = data[:, train_slice, n_covariate_cols:]
     valid_data = data[:, valid_slice, n_covariate_cols:]
     test_data = data[:, test_slice, n_covariate_cols:]
+
+    print("Train repr shape: ", train_repr.shape)
+    print("Valid repr shape: ", valid_repr.shape)
+    print("Test repr shape: ", test_repr.shape)
+    print("Train data shape: ", train_data.shape)
+    print("Valid data shape: ", valid_data.shape)
+    print("Test data shape: ", test_data.shape)
+    print('----------------')
     
     ours_result = {}
     lr_train_time = {}
@@ -46,6 +54,14 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         train_features, train_labels = generate_pred_samples(train_repr, train_data, pred_len, drop=padding)
         valid_features, valid_labels = generate_pred_samples(valid_repr, valid_data, pred_len)
         test_features, test_labels = generate_pred_samples(test_repr, test_data, pred_len)
+
+        print("train feature: ", train_features.shape)
+        print("train labels: ", train_labels.shape)
+        print("valid feauters: ", valid_features.shape)
+        print("valid labels: ", valid_labels.shape)
+        print("test features: ", test_features.shape)
+        print("test labels: ", test_labels.shape)
+        print("-----------------")
         
         t = time.time()
         lr = eval_protocols.fit_ridge(train_features, train_labels, valid_features, valid_labels)
@@ -58,6 +74,11 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         ori_shape = test_data.shape[0], -1, pred_len, test_data.shape[2]
         test_pred = test_pred.reshape(ori_shape)
         test_labels = test_labels.reshape(ori_shape)
+
+        print(ori_shape)
+        print("Test pred: ", test_pred.shape)
+        print("Test labels: ", test_labels.shape)
+        print("-----------------")
         
         if test_data.shape[0] > 1:
             test_pred_inv = scaler.inverse_transform(test_pred.swapaxes(0, 3)).swapaxes(0, 3)
