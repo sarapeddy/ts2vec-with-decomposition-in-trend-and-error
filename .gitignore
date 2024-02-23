@@ -5,4 +5,5 @@ training/*
 scripts/_nohup
 .rsync-filter
 .idea
+config.ini
 
