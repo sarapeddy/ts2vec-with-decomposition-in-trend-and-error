@@ -4,6 +4,5 @@ __pycache__
 training/*
 scripts/_nohup
 .rsync-filter
-*.ini
 .idea
 

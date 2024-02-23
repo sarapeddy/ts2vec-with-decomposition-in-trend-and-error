@@ -5,17 +5,27 @@ import utils
 import os
 import time
 import datetime
+import pandas as pd
 from configparser import ConfigParser
 from tasks.forecasting import eval_forecasting
 
-# To configure the path to store the files
+# To configure the path to store the files and the dataset
 config = ConfigParser()
 config.read('config.ini')
 path = config['SETTINGS'].get('path')
-print(path)
+dataset = config['SETTINGS'].get('dataset')
+
+# To extract the csv from the electricity dataset: it is downloaded as a txt file named as LD2011_2014
+if dataset == 'LD2011_2014':
+    data_ecl = pd.read_csv(f'datasets/{dataset}.txt', parse_dates=True, sep=';', decimal=',', index_col=0)
+    data_ecl = data_ecl.resample('1h', closed='right').sum()
+    data_ecl = data_ecl.loc[:, data_ecl.cumsum(axis=0).iloc[8920] != 0]  # filter out instances with missing values
+    data_ecl.index = data_ecl.index.rename('date')
+    data_ecl = data_ecl['2012':]
+    data_ecl.to_csv(f'datasets/{dataset}.csv')
+    dataset = 'electricity'
 
 # set GPU
-dataset = 'ETTm1'
 device = utils.init_dl_program(0, seed=42, max_threads=8)
 
 torch.cuda.empty_cache()
