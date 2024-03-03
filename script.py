@@ -67,7 +67,7 @@ t = time.time()
 
 # Train a TS2Vec model
 model = TS2Vec(
-    input_dims=train_data.shape[-1],
+    input_dims=train_data.shape[-1] + train_data.shape[-1] - n_covariate_cols,
     device=device,
     **config
 )

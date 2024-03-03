@@ -4,6 +4,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 from models import TSEncoder
 from models.losses import hierarchical_contrastive_loss
+from moving_avg_tensor_dataset import TimeSeriesDatasetWithMovingAvg
 from utils import take_per_row, split_with_nan, centerize_vary_length_series, torch_pad_nan
 import math
 
@@ -85,7 +86,8 @@ class TS2Vec:
                 
         train_data = train_data[~np.isnan(train_data).all(axis=2).all(axis=1)]
         
-        train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
+        # train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
+        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_covariate_cols=7)
         train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True, drop_last=True)
         
         optimizer = torch.optim.AdamW(self._net.parameters(), lr=self.lr)
@@ -227,7 +229,8 @@ class TS2Vec:
         org_training = self.net.training
         self.net.eval()
         
-        dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
+        # dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
+        dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), 7)
         loader = DataLoader(dataset, batch_size=batch_size)
         
         with torch.no_grad():
