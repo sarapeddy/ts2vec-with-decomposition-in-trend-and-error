@@ -1,3 +1,5 @@
+import json
+
 import torch.cuda
 from ts2vec import TS2Vec
 import datautils
@@ -91,6 +93,9 @@ print("\n----------------- FINAL RESULTS --------------------")
 
 utils.pkl_save(f'{run_dir}/out.pkl', out)
 utils.pkl_save(f'{run_dir}/eval_res.pkl', eval_res)
+with open(f'{run_dir}/eval_res.json', 'w') as json_file:
+    json.dump(eval_res, json_file, indent=4)
+
 print('Evaluation result:', eval_res)
 
 torch.cuda.empty_cache()
