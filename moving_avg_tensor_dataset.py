@@ -28,7 +28,10 @@ class TimeSeriesDatasetWithMovingAvg(TensorDataset):
     def __init__(self, original_dataset: Tensor, n_covariate_cols,  kernel_size=9):
         self.n_covariate_cols = n_covariate_cols
         self.moving_avg = MovingAvg(kernel_size, stride=1)
-        x_avg = self.moving_avg(original_dataset[:, :, self.n_covariate_cols:])
-        expanded_dataset = torch.cat([original_dataset, x_avg], dim=2)
+        x_time = original_dataset[:, :, :self.n_covariate_cols]
+        x_original = original_dataset[:, :, self.n_covariate_cols:]
+        x_avg = self.moving_avg(x_original)
+        x_err = x_original - x_avg
+        expanded_dataset = torch.cat([x_time, x_avg, x_err], dim=2)
         super(TimeSeriesDatasetWithMovingAvg, self).__init__(expanded_dataset)
 
