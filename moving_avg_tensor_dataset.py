@@ -25,11 +25,13 @@ class MovingAvg(nn.Module):
 
 class TimeSeriesDatasetWithMovingAvg(TensorDataset):
     
-    def __init__(self, original_dataset: Tensor, n_covariate_cols,  kernel_size=9):
-        self.n_covariate_cols = n_covariate_cols
+    def __init__(self, original_dataset: Tensor, n_time_cols,  kernel_size=9, mode='feature'):
+        self.n_time_cols = n_time_cols
         self.moving_avg = MovingAvg(kernel_size, stride=1)
-        x_time = original_dataset[:, :, :self.n_covariate_cols]
-        x_original = original_dataset[:, :, self.n_covariate_cols:]
+        self.mode = mode
+        self.n_covariate_cols = original_dataset.shape[-1] - n_time_cols
+        x_time = original_dataset[:, :, :self.n_time_cols]
+        x_original = original_dataset[:, :, self.n_time_cols:]
         x_avg = self.moving_avg(x_original)
         x_err = x_original - x_avg
         expanded_dataset = torch.cat([x_time, x_avg, x_err], dim=2)
