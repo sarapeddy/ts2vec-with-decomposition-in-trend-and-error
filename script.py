@@ -76,7 +76,7 @@ print("\n------------------- TRAINING ENCODER -------------------\n")
 
 input_dim = train_data.shape[-1]
 if mode == 'ts2vec-feature':
-    input_dim = train_data.shape[1] + train_data.shape[-1] - n_time_cols
+    input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
 
 t = time.time()
 
