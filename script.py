@@ -69,14 +69,14 @@ config = dict(
 )
 
 #Creation of dirs to store results
-run_dir = f'{path}/training/' + dataset + '__' + utils.name_with_datetime('forecast_multivar') + mode
+run_dir = f'{path}/training/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
 os.makedirs(run_dir, exist_ok=True)
 
 print("\n------------------- TRAINING ENCODER -------------------\n")
 
 input_dim = train_data.shape[-1]
-if mode == 'feature':
-    input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
+if mode == 'ts2vec-feature':
+    input_dim = train_data.shape[1] + train_data.shape[-1] - n_time_cols
 
 t = time.time()
 
