@@ -10,11 +10,12 @@ import datetime
 import pandas as pd
 from configparser import ConfigParser
 from tasks.forecasting import eval_forecasting
+from ts2vec_dlinear import TS2VecDlinear
 
-# RICORDATI DI MODIFICARE QUANDO HAI CREATO LA NUOVA CLASSE
+
 def create_model(type_of_train, dim, current_device, configuration):
     if type_of_train == 'Dlinear':
-        return TS2Vec(input_dims=dim, device=current_device, **configuration)
+        return TS2VecDlinear(input_dims=dim, device=current_device, **configuration)
     else:
         return TS2Vec(input_dims=dim, device=current_device, **configuration)
 
@@ -61,22 +62,22 @@ train_data = data[:, train_slice]
 print(train_data)
 print(train_data.shape)
 
-config = dict(
-    batch_size=8,
-    lr=0.001,
-    output_dims=320,
-    max_train_length=3000
-)
-
 #Creation of dirs to store results
 run_dir = f'{path}/training/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
 os.makedirs(run_dir, exist_ok=True)
 
 print("\n------------------- TRAINING ENCODER -------------------\n")
 
+config = dict(
+    batch_size=8,
+    lr=0.001,
+    output_dims=320,
+    max_train_length=3000,
+)
+
 input_dim = train_data.shape[-1]
 if mode == 'ts2vec-feature':
-    input_dim = train_data.shape[1] + train_data.shape[-1] - n_time_cols
+    input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
 
 t = time.time()
 

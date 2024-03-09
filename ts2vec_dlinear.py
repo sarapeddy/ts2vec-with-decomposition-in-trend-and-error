@@ -8,7 +8,17 @@ from moving_avg_tensor_dataset import TimeSeriesDatasetWithMovingAvg
 from utils import take_per_row, split_with_nan, centerize_vary_length_series, torch_pad_nan
 import math
 
-class TS2Vec:
+def collect_fn(batch):
+    # Stack della lista di tensori in un unico tensore
+    data = torch.stack([item[0] for item in batch], dim=0)
+    total_covariate = (data.shape[2] - 7)/2
+
+    result_data_avg = torch.cat([data[:, :, :7], data[:, :, 7:7+total_covariate]], dim=2)
+    result_data_err = torch.cat([data[:, :, :7], data[:, :, 7 + total_covariate:]], dim=2)
+    return result_data_avg, result_data_err
+
+
+class TS2VecDlinear:
     '''The TS2Vec model'''
     
     def __init__(
@@ -23,7 +33,7 @@ class TS2Vec:
         max_train_length=None,
         temporal_unit=0,
         after_iter_callback=None,
-        after_epoch_callback=None
+        after_epoch_callback=None,
     ):
         ''' Initialize a TS2Vec model.
         
@@ -48,10 +58,13 @@ class TS2Vec:
         self.max_train_length = max_train_length
         self.temporal_unit = temporal_unit
         
-        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth).to(self.device)
-        self.net = torch.optim.swa_utils.AveragedModel(self._net)
-        self.net.update_parameters(self._net)
-        
+        self._net_avg = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth).to(self.device)
+        self._net_err = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth).to(self.device)
+        self.net_avg = torch.optim.swa_utils.AveragedModel(self._net_avg)
+        self.net_err = torch.optim.swa_utils.AveragedModel(self._net_err)
+        self.net_avg.update_parameters(self._net_avg)
+        self.net_err.update_parameters(self._net_err)
+
         self.after_iter_callback = after_iter_callback
         self.after_epoch_callback = after_epoch_callback
         
@@ -87,11 +100,13 @@ class TS2Vec:
         train_data = train_data[~np.isnan(train_data).all(axis=2).all(axis=1)]
         
         # train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
-        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_covariate_cols=7)
-        train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True, drop_last=True)
+        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=7)
+        train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True,
+                                  drop_last=True, collate_fn=collect_fn)
         
-        optimizer = torch.optim.AdamW(self._net.parameters(), lr=self.lr)
-        
+        optimizer1 = torch.optim.AdamW(self._net_avg.parameters(), lr=self.lr)
+        optimizer2 = torch.optim.AdamW(self._net_err.parameters(), lr=self.lr)
+
         loss_log = []
         
         while True:
@@ -102,17 +117,17 @@ class TS2Vec:
             n_epoch_iters = 0
             
             interrupted = False
-            for batch in train_loader:
+            for batch_1, batch_2 in train_loader:
                 if n_iters is not None and self.n_iters >= n_iters:
                     interrupted = True
                     break
-                
-                x = batch[0]
+
+                x = batch_1[0]
                 if self.max_train_length is not None and x.size(1) > self.max_train_length:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
                     x = x[:, window_offset : window_offset + self.max_train_length]
                 x = x.to(self.device)
-                
+
                 ts_l = x.size(1)
                 crop_l = np.random.randint(low=2 ** (self.temporal_unit + 1), high=ts_l+1)
                 crop_left = np.random.randint(ts_l - crop_l + 1)
@@ -121,24 +136,42 @@ class TS2Vec:
                 crop_eright = np.random.randint(low=crop_right, high=ts_l + 1)
                 crop_offset = np.random.randint(low=-crop_eleft, high=ts_l - crop_eright + 1, size=x.size(0))
                 
-                optimizer.zero_grad()
+                optimizer1.zero_grad()
+                optimizer2.zero_grad()
+
+                # First model
+                out1_avg = self._net_avg(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft))
+                out1_avg = out1_avg[:, -crop_l:]
                 
-                out1 = self._net(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft))
-                out1 = out1[:, -crop_l:]
+                out2_avg = self._net_avg(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left))
+                out2_avg = out2_avg[:, :crop_l]
+
+                # Second model
+                out1_err = self._net_err(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft))
+                out1_err = out1_err[:, -crop_l:]
+
+                out2_err = self._net_err(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left))
+                out2_err = out2_err[:, :crop_l]
                 
-                out2 = self._net(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left))
-                out2 = out2[:, :crop_l]
-                
-                loss = hierarchical_contrastive_loss(
-                    out1,
-                    out2,
+                loss1 = hierarchical_contrastive_loss(
+                    out1_avg,
+                    out2_avg,
                     temporal_unit=self.temporal_unit
                 )
-                
+
+                loss2 = hierarchical_contrastive_loss(
+                    out1_err,
+                    out2_err,
+                    temporal_unit=self.temporal_unit
+                )
+
+                loss = loss1 + loss2
                 loss.backward()
-                optimizer.step()
-                self.net.update_parameters(self._net)
-                    
+                optimizer1.step()
+                optimizer2.step()
+                self.net_avg.update_parameters(self._net_avg)
+                self.net_err.update_parameters(self._net_err)
+
                 cum_loss += loss.item()
                 n_epoch_iters += 1
                 
@@ -220,23 +253,26 @@ class TS2Vec:
         Returns:
             repr: The representations for data.
         '''
-        assert self.net is not None, 'please train or load a net first'
+        assert self.net_avg is not None, 'please train or load a net first'
+        assert self.net_err is not None, 'please train or load a net first'
         assert data.ndim == 3
         if batch_size is None:
             batch_size = self.batch_size
         n_samples, ts_l, _ = data.shape
 
-        org_training = self.net.training
-        self.net.eval()
-        
+        org_training_avg = self.net_avg.training
+        org_training_err = self.net_avg.training
+        self.net_avg.eval()
+        self.net_err.eval()
+
         # dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
         dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), 7)
-        loader = DataLoader(dataset, batch_size=batch_size)
+        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=collect_fn)
         
         with torch.no_grad():
             output = []
-            for batch in loader:
-                x = batch[0]
+            for batch_1, batch_2 in loader:
+                x = batch_1[0]
                 if sliding_length is not None:
                     reprs = []
                     if n_samples < batch_size:
@@ -300,23 +336,27 @@ class TS2Vec:
                 
             output = torch.cat(output, dim=0)
             
-        self.net.train(org_training)
+        self.net_avg.train(org_training_avg)
+        self.net_err.train(org_training_err)
         return output.numpy()
     
-    def save(self, fn):
+    def save(self, fn1, fn2):
         ''' Save the model to a file.
         
         Args:
             fn (str): filename.
         '''
-        torch.save(self.net.state_dict(), fn)
-    
-    def load(self, fn):
+        torch.save(self.net_avg.state_dict(), fn1)
+        torch.save(self.net_err.state_dict(), fn2)
+
+    def load(self, fn1, fn2):
         ''' Load the model from a file.
         
         Args:
             fn (str): filename.
         '''
-        state_dict = torch.load(fn, map_location=self.device)
-        self.net.load_state_dict(state_dict)
-    
+        state_dict_avg = torch.load(fn1, map_location=self.device)
+        state_dict_err = torch.load(fn2, map_location=self.device)
+        self.net_avg.load_state_dict(state_dict_avg)
+        self.net_err.load_state_dict(state_dict_err)
+
