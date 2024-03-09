@@ -13,7 +13,7 @@ from tasks.forecasting import eval_forecasting
 
 # RICORDATI DI MODIFICARE QUANDO HAI CREATO LA NUOVA CLASSE
 def create_model(type_of_train, dim, current_device, configuration):
-    if type_of_train == 'ts2vec-Dlinear':
+    if type_of_train == 'Dlinear':
         return TS2Vec(input_dims=dim, device=current_device, **configuration)
     else:
         return TS2Vec(input_dims=dim, device=current_device, **configuration)
@@ -69,14 +69,14 @@ config = dict(
 )
 
 #Creation of dirs to store results
-run_dir = f'{path}/training/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
+run_dir = f'{path}/training/' + dataset + '__' + utils.name_with_datetime('forecast_multivar') + mode
 os.makedirs(run_dir, exist_ok=True)
 
 print("\n------------------- TRAINING ENCODER -------------------\n")
 
 input_dim = train_data.shape[-1]
-if mode == 'ts2vec-feature':
-    input_dim = train_data.shape[1] + train_data.shape[-1] - n_time_cols
+if mode == 'feature':
+    input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
 
 t = time.time()
 
