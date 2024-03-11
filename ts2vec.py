@@ -87,7 +87,7 @@ class TS2Vec:
         train_data = train_data[~np.isnan(train_data).all(axis=2).all(axis=1)]
         
         # train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
-        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_covariate_cols=7)
+        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=7)
         train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True, drop_last=True)
         
         optimizer = torch.optim.AdamW(self._net.parameters(), lr=self.lr)
@@ -146,7 +146,9 @@ class TS2Vec:
                 
                 if self.after_iter_callback is not None:
                     self.after_iter_callback(self, loss.item())
-            
+
+                # break # only one batch is used for training
+
             if interrupted:
                 break
             
@@ -158,6 +160,8 @@ class TS2Vec:
             
             if self.after_epoch_callback is not None:
                 self.after_epoch_callback(self, cum_loss)
+
+            # break # only one epoch is used for training
             
         return loss_log
     
