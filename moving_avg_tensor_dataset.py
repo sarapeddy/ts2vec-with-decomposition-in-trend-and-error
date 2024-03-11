@@ -29,7 +29,6 @@ class TimeSeriesDatasetWithMovingAvg(TensorDataset):
         self.n_time_cols = n_time_cols
         self.moving_avg = MovingAvg(kernel_size, stride=1)
         self.mode = mode
-        self.n_covariate_cols = original_dataset.shape[-1] - n_time_cols
         x_time = original_dataset[:, :, :self.n_time_cols]
         x_original = original_dataset[:, :, self.n_time_cols:]
         x_avg = self.moving_avg(x_original)

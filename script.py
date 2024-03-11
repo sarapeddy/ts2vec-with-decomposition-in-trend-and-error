@@ -76,7 +76,7 @@ config = dict(
 )
 
 input_dim = train_data.shape[-1]
-if mode == 'ts2vec-feature':
+if mode == 'feature':
     input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
 
 t = time.time()
@@ -91,7 +91,10 @@ loss_log = model.fit(
     verbose=True
 )
 
-model.save(f'{run_dir}/model.pkl')
+if mode =='Dlinear':
+    model.save(f'{run_dir}/model_avg.pkl', f'{run_dir}/model_err.pkl')
+else:
+    model.save(f'{run_dir}/model.pkl')
 
 t = time.time() - t
 print(f"\nTraining time: {datetime.timedelta(seconds=t)}\n")
