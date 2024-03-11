@@ -11,7 +11,7 @@ import math
 def collect_fn(batch):
     # Stack della lista di tensori in un unico tensore
     data = torch.stack([item[0] for item in batch], dim=0)
-    total_covariate = (data.shape[2] - 7)/2
+    total_covariate = (data.shape[2] - 7)//2
 
     result_data_avg = torch.cat([data[:, :, :7], data[:, :, 7:7+total_covariate]], dim=2)
     result_data_err = torch.cat([data[:, :, :7], data[:, :, 7 + total_covariate:]], dim=2)
@@ -117,16 +117,17 @@ class TS2VecDlinear:
             n_epoch_iters = 0
             
             interrupted = False
-            for batch_1, batch_2 in train_loader:
+            for x, y in train_loader:
                 if n_iters is not None and self.n_iters >= n_iters:
                     interrupted = True
                     break
 
-                x = batch_1[0]
-                if self.max_train_length is not None and x.size(1) > self.max_train_length:
+                if self.max_train_length is not None and x.size(1) > self.max_train_length and y.size(1) > self.max_train_length:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
                     x = x[:, window_offset : window_offset + self.max_train_length]
+                    y = y[:, window_offset : window_offset + self.max_train_length]
                 x = x.to(self.device)
+                y = y.to(self.device)
 
                 ts_l = x.size(1)
                 crop_l = np.random.randint(low=2 ** (self.temporal_unit + 1), high=ts_l+1)
@@ -139,20 +140,20 @@ class TS2VecDlinear:
                 optimizer1.zero_grad()
                 optimizer2.zero_grad()
 
-                # First model
+                # First model: average
                 out1_avg = self._net_avg(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft))
                 out1_avg = out1_avg[:, -crop_l:]
-                
+
                 out2_avg = self._net_avg(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left))
                 out2_avg = out2_avg[:, :crop_l]
 
-                # Second model
-                out1_err = self._net_err(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft))
+                # Second model; error
+                out1_err = self._net_err(take_per_row(y, crop_offset + crop_eleft, crop_right - crop_eleft))
                 out1_err = out1_err[:, -crop_l:]
 
-                out2_err = self._net_err(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left))
+                out2_err = self._net_err(take_per_row(y, crop_offset + crop_left, crop_eright - crop_left))
                 out2_err = out2_err[:, :crop_l]
-                
+
                 loss1 = hierarchical_contrastive_loss(
                     out1_avg,
                     out2_avg,
@@ -194,49 +195,74 @@ class TS2VecDlinear:
             
         return loss_log
     
-    def _eval_with_pooling(self, x, mask=None, slicing=None, encoding_window=None):
-        out = self.net(x.to(self.device, non_blocking=True), mask)
+    def _eval_with_pooling(self, x, y, mask=None, slicing=None, encoding_window=None):
+        out1 = self.net_err(x.to(self.device, non_blocking=True), mask)
+        out2 = self.net_avg(y.to(self.device, non_blocking=True), mask)
         if encoding_window == 'full_series':
             if slicing is not None:
-                out = out[:, slicing]
-            out = F.max_pool1d(
-                out.transpose(1, 2),
-                kernel_size = out.size(1),
+                out1 = out1[:, slicing]
+                out2 = out2[:, slicing]
+            out1 = F.max_pool1d(
+                out1.transpose(1, 2),
+                kernel_size = out1.size(1),
+            ).transpose(1, 2)
+            out2 = F.max_pool1d(
+                out2.transpose(1, 2),
+                kernel_size=out2.size(1),
             ).transpose(1, 2)
             
         elif isinstance(encoding_window, int):
-            out = F.max_pool1d(
-                out.transpose(1, 2),
+            out1 = F.max_pool1d(
+                out1.transpose(1, 2),
                 kernel_size = encoding_window,
                 stride = 1,
                 padding = encoding_window // 2
             ).transpose(1, 2)
+            out2 = F.max_pool1d(
+                out2.transpose(1, 2),
+                kernel_size=encoding_window,
+                stride=1,
+                padding=encoding_window // 2
+            ).transpose(1, 2)
             if encoding_window % 2 == 0:
-                out = out[:, :-1]
+                out1 = out1[:, :-1]
+                out2 = out2[:, :-1]
             if slicing is not None:
-                out = out[:, slicing]
+                out1 = out1[:, slicing]
+                out2 = out2[:, slicing]
             
         elif encoding_window == 'multiscale':
             p = 0
-            reprs = []
-            while (1 << p) + 1 < out.size(1):
-                t_out = F.max_pool1d(
-                    out.transpose(1, 2),
+            reprs1 = []
+            reprs2 = []
+            while (1 << p) + 1 < out1.size(1):
+                t_out1 = F.max_pool1d(
+                    out1.transpose(1, 2),
                     kernel_size = (1 << (p + 1)) + 1,
                     stride = 1,
                     padding = 1 << p
                 ).transpose(1, 2)
+                t_out2 = F.max_pool1d(
+                    out2.transpose(1, 2),
+                    kernel_size=(1 << (p + 1)) + 1,
+                    stride=1,
+                    padding=1 << p
+                ).transpose(1, 2)
                 if slicing is not None:
-                    t_out = t_out[:, slicing]
-                reprs.append(t_out)
+                    t_out1 = t_out1[:, slicing]
+                    t_out2 = t_out2[:, slicing]
+                reprs1.append(t_out1)
+                reprs2.append(t_out2)
                 p += 1
-            out = torch.cat(reprs, dim=-1)
+            out1 = torch.cat(reprs1, dim=-1)
+            out2 = torch.cat(reprs2, dim=-1)
             
         else:
             if slicing is not None:
-                out = out[:, slicing]
+                out1 = out1[:, slicing]
+                out2 = out2[:, slicing]
             
-        return out.cpu()
+        return out1.cpu(), out2.cpu()
     
     def encode(self, data, mask=None, encoding_window=None, causal=False, sliding_length=None, sliding_padding=0, batch_size=None):
         ''' Compute representations using the model.
@@ -270,13 +296,15 @@ class TS2VecDlinear:
         loader = DataLoader(dataset, batch_size=batch_size, collate_fn=collect_fn)
         
         with torch.no_grad():
-            output = []
-            for batch_1, batch_2 in loader:
-                x = batch_1[0]
+            output1 = []
+            output2 = []
+            for x, y in loader:
                 if sliding_length is not None:
-                    reprs = []
+                    reprs1 = []
+                    reprs2 = []
                     if n_samples < batch_size:
-                        calc_buffer = []
+                        calc_buffer1 = []
+                        calc_buffer2 = []
                         calc_buffer_l = 0
                     for i in range(0, ts_l, sliding_length):
                         l = i - sliding_padding
@@ -287,58 +315,81 @@ class TS2VecDlinear:
                             right=r-ts_l if r>ts_l else 0,
                             dim=1
                         )
+                        y_sliding = torch_pad_nan(
+                            y[:, max(l, 0): min(r, ts_l)],
+                            left=-l if l < 0 else 0,
+                            right=r - ts_l if r > ts_l else 0,
+                            dim=1
+                        )
                         if n_samples < batch_size:
                             if calc_buffer_l + n_samples > batch_size:
-                                out = self._eval_with_pooling(
-                                    torch.cat(calc_buffer, dim=0),
+                                out1, out2 = self._eval_with_pooling(
+                                    torch.cat(calc_buffer1, dim=0),
+                                    torch.cat(calc_buffer2, dim=0),
                                     mask,
                                     slicing=slice(sliding_padding, sliding_padding+sliding_length),
                                     encoding_window=encoding_window
                                 )
-                                reprs += torch.split(out, n_samples)
-                                calc_buffer = []
+                                reprs1 += torch.split(out1, n_samples)
+                                reprs2 += torch.split(out2, n_samples)
+                                calc_buffer1 = []
+                                calc_buffer2 = []
                                 calc_buffer_l = 0
-                            calc_buffer.append(x_sliding)
+                            calc_buffer1.append(x_sliding)
+                            calc_buffer2.append(y_sliding)
                             calc_buffer_l += n_samples
                         else:
-                            out = self._eval_with_pooling(
+                            out1, out2 = self._eval_with_pooling(
                                 x_sliding,
+                                y_sliding,
                                 mask,
                                 slicing=slice(sliding_padding, sliding_padding+sliding_length),
                                 encoding_window=encoding_window
                             )
-                            reprs.append(out)
+                            reprs1.append(out1)
+                            reprs2.append(out2)
 
                     if n_samples < batch_size:
                         if calc_buffer_l > 0:
-                            out = self._eval_with_pooling(
-                                torch.cat(calc_buffer, dim=0),
+                            out1, out2 = self._eval_with_pooling(
+                                torch.cat(calc_buffer1, dim=0),
+                                torch.cat(calc_buffer2, dim=0),
                                 mask,
                                 slicing=slice(sliding_padding, sliding_padding+sliding_length),
                                 encoding_window=encoding_window
                             )
-                            reprs += torch.split(out, n_samples)
-                            calc_buffer = []
+                            reprs1 += torch.split(out1, n_samples)
+                            reprs2 += torch.split(out2, n_samples)
+                            calc_buffer1 = []
+                            calc_buffer2 = []
                             calc_buffer_l = 0
                     
-                    out = torch.cat(reprs, dim=1)
+                    out1 = torch.cat(reprs1, dim=1)
+                    out2 = torch.cat(reprs2, dim=1)
                     if encoding_window == 'full_series':
-                        out = F.max_pool1d(
-                            out.transpose(1, 2).contiguous(),
-                            kernel_size = out.size(1),
+                        out1 = F.max_pool1d(
+                            out1.transpose(1, 2).contiguous(),
+                            kernel_size = out1.size(1),
+                        ).squeeze(1)
+                        out2 = F.max_pool1d(
+                            out2.transpose(1, 2).contiguous(),
+                            kernel_size=out2.size(1),
                         ).squeeze(1)
                 else:
-                    out = self._eval_with_pooling(x, mask, encoding_window=encoding_window)
+                    out1, out2 = self._eval_with_pooling(x, y, mask, encoding_window=encoding_window)
                     if encoding_window == 'full_series':
-                        out = out.squeeze(1)
+                        out1 = out1.squeeze(1)
+                        out2 = out2.squeeze(1)
                         
-                output.append(out)
+                output1.append(out1)
+                output2.append(out2)
                 
-            output = torch.cat(output, dim=0)
+            output1  = torch.cat(output1, dim=0)
+            output2  = torch.cat(output2, dim=0)
             
         self.net_avg.train(org_training_avg)
         self.net_err.train(org_training_err)
-        return output.numpy()
+        return output1.numpy(), output2.numpy()
     
     def save(self, fn1, fn2):
         ''' Save the model to a file.
