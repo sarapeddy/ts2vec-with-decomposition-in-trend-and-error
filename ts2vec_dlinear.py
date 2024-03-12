@@ -180,7 +180,9 @@ class TS2VecDlinear:
                 
                 if self.after_iter_callback is not None:
                     self.after_iter_callback(self, loss.item())
-            
+
+                # break # only one iteration
+
             if interrupted:
                 break
             
@@ -192,6 +194,8 @@ class TS2VecDlinear:
             
             if self.after_epoch_callback is not None:
                 self.after_epoch_callback(self, cum_loss)
+
+            # break # only one epoch
             
         return loss_log
     
@@ -383,13 +387,14 @@ class TS2VecDlinear:
                         
                 output1.append(out1)
                 output2.append(out2)
-                
+
             output1  = torch.cat(output1, dim=0)
             output2  = torch.cat(output2, dim=0)
-            
+
+        output = output1 + output2
         self.net_avg.train(org_training_avg)
         self.net_err.train(org_training_err)
-        return output1.numpy(), output2.numpy()
+        return output.numpy()
     
     def save(self, fn1, fn2):
         ''' Save the model to a file.

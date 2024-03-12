@@ -63,7 +63,7 @@ print(train_data)
 print(train_data.shape)
 
 #Creation of dirs to store results
-run_dir = f'{path}/training/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
+run_dir = f'{path}/training/' + dataset + '__' + mode + '__' + utils.name_with_datetime('forecast_multivar')
 os.makedirs(run_dir, exist_ok=True)
 
 print("\n------------------- TRAINING ENCODER -------------------\n")
