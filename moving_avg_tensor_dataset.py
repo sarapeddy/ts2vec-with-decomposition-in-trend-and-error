@@ -25,10 +25,9 @@ class MovingAvg(nn.Module):
 
 class TimeSeriesDatasetWithMovingAvg(TensorDataset):
     
-    def __init__(self, original_dataset: Tensor, n_time_cols,  kernel_size=9, mode='feature'):
+    def __init__(self, original_dataset: Tensor, n_time_cols,  kernel_size=9):
         self.n_time_cols = n_time_cols
         self.moving_avg = MovingAvg(kernel_size, stride=1)
-        self.mode = mode
         x_time = original_dataset[:, :, :self.n_time_cols]
         x_original = original_dataset[:, :, self.n_time_cols:]
         x_avg = self.moving_avg(x_original)
