@@ -8,7 +8,7 @@ from moving_avg_tensor_dataset import TimeSeriesDatasetWithMovingAvg
 from utils import take_per_row, split_with_nan, centerize_vary_length_series, torch_pad_nan
 import math
 
-def collect_fn(batch):
+def collate_fn(batch):
     # Stack della lista di tensori in un unico tensore
     data = torch.stack([item[0] for item in batch], dim=0)
     total_covariate = (data.shape[2] - 7)//2
@@ -102,7 +102,7 @@ class TS2VecDlinear:
         # train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
         train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=7)
         train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True,
-                                  drop_last=True, collate_fn=collect_fn)
+                                  drop_last=True, collate_fn=collate_fn)
         
         optimizer1 = torch.optim.AdamW(self._net_avg.parameters(), lr=self.lr)
         optimizer2 = torch.optim.AdamW(self._net_err.parameters(), lr=self.lr)
@@ -297,7 +297,7 @@ class TS2VecDlinear:
 
         # dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
         dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), 7)
-        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=collect_fn)
+        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
         
         with torch.no_grad():
             output1 = []
