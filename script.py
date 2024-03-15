@@ -14,8 +14,8 @@ from ts2vec_dlinear import TS2VecDlinear
 
 
 def create_model(type_of_train, dim, current_device, configuration):
-    if type_of_train == 'Dlinear':
-        return TS2VecDlinear(input_dims=dim, device=current_device, **configuration)
+    if 'ts2vec-dlinear' in type_of_train.lower():
+        return TS2VecDlinear(input_dims=dim, device=current_device, mode=type_of_train, **configuration)
     else:
         return TS2Vec(input_dims=dim, device=current_device, **configuration)
 
@@ -91,7 +91,7 @@ loss_log = model.fit(
     verbose=True
 )
 
-if mode =='Dlinear':
+if 'ts2vec-dlinear' in mode.lower():
     model.save(f'{run_dir}/model_avg.pkl', f'{run_dir}/model_err.pkl')
 else:
     model.save(f'{run_dir}/model.pkl')

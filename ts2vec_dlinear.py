@@ -6,7 +6,7 @@ from models import TSEncoder
 from models.losses import hierarchical_contrastive_loss
 from moving_avg_tensor_dataset import TimeSeriesDatasetWithMovingAvg
 from utils import take_per_row, split_with_nan, centerize_vary_length_series, torch_pad_nan
-import math
+
 
 def collate_fn(batch):
     # Stack della lista di tensori in un unico tensore
@@ -34,6 +34,7 @@ class TS2VecDlinear:
         temporal_unit=0,
         after_iter_callback=None,
         after_epoch_callback=None,
+        mode='ts2vec-Dlinear-two-loss'
     ):
         ''' Initialize a TS2Vec model.
         
@@ -70,6 +71,7 @@ class TS2VecDlinear:
         
         self.n_epochs = 0
         self.n_iters = 0
+        self.mode = mode
     
     def fit(self, train_data, n_epochs=None, n_iters=None, verbose=False):
         ''' Training the TS2Vec model.
@@ -154,19 +156,27 @@ class TS2VecDlinear:
                 out2_err = self._net_err(take_per_row(y, crop_offset + crop_left, crop_eright - crop_left))
                 out2_err = out2_err[:, :crop_l]
 
-                loss1 = hierarchical_contrastive_loss(
-                    out1_avg,
-                    out2_avg,
-                    temporal_unit=self.temporal_unit
-                )
+                loss = torch.tensor(0., device=x.device)
+                if self.mode == 'ts2vec-Dlinears-two-loss':
+                    loss1 = hierarchical_contrastive_loss(
+                        out1_avg,
+                        out2_avg,
+                        temporal_unit=self.temporal_unit
+                    )
 
-                loss2 = hierarchical_contrastive_loss(
-                    out1_err,
-                    out2_err,
-                    temporal_unit=self.temporal_unit
-                )
+                    loss2 = hierarchical_contrastive_loss(
+                        out1_err,
+                        out2_err,
+                        temporal_unit=self.temporal_unit
+                    )
+                    loss = loss1 + loss2
+                else:
+                    loss = hierarchical_contrastive_loss(
+                        out1_avg + out1_err,
+                        out2_avg + out2_err,
+                        temporal_unit=self.temporal_unit
+                    )
 
-                loss = loss1 + loss2
                 loss.backward()
                 optimizer1.step()
                 optimizer2.step()
@@ -400,7 +410,8 @@ class TS2VecDlinear:
         ''' Save the model to a file.
         
         Args:
-            fn (str): filename.
+            fn1 (str): filename.
+            fn2 (str): filename.
         '''
         torch.save(self.net_avg.state_dict(), fn1)
         torch.save(self.net_err.state_dict(), fn2)
@@ -409,7 +420,8 @@ class TS2VecDlinear:
         ''' Load the model from a file.
         
         Args:
-            fn (str): filename.
+            fn1 (str): filename.
+            fn2 (str): filename.
         '''
         state_dict_avg = torch.load(fn1, map_location=self.device)
         state_dict_err = torch.load(fn2, map_location=self.device)
