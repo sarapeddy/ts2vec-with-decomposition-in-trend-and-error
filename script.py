@@ -103,7 +103,7 @@ print(f"\nTraining time: {datetime.timedelta(seconds=t)}\n")
 
 print("\n----------------- EVAL FORECASTING -------------------\n")
 
-out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len)
+out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len if seq_len else None)
 
 print("\n----------------- FINAL RESULTS --------------------\n")
 

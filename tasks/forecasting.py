@@ -5,6 +5,15 @@ import torch
 
 from . import _eval_protocols as eval_protocols
 
+def generate_pred_samples_original(features, data, pred_len, drop=0):
+    n = data.shape[1]
+    features = features[:, :-pred_len]
+    labels = np.stack([ data[:, i:1+n+i-pred_len] for i in range(pred_len)], axis=2)[:, 1:]
+    features = features[:, drop:]
+    labels = labels[:, drop:]
+    return features.reshape(-1, features.shape[-1]), \
+            labels.reshape(-1, labels.shape[2]*labels.shape[3])
+
 def generate_pred_samples(features, data, pred_len, seq_len, drop=0):
     n = data.shape[1] - seq_len - pred_len + 1
     # features = features[:, :-pred_len]
@@ -25,7 +34,7 @@ def cal_metrics(pred, target):
         'MAE': np.abs(pred - target).mean()
     }
     
-def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len):
+def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len=None):
     padding = 200
     
     t = time.time()
@@ -59,9 +68,14 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
     lr_infer_time = {}
     out_log = {}
     for pred_len in pred_lens:
-        train_features, train_labels = generate_pred_samples(train_repr, train_data, pred_len, seq_len, drop=padding)
-        valid_features, valid_labels = generate_pred_samples(valid_repr, valid_data, pred_len, seq_len)
-        test_features, test_labels = generate_pred_samples(test_repr, test_data, pred_len, seq_len)
+        if seq_len is None:
+            train_features, train_labels = generate_pred_samples_original(train_repr, train_data, pred_len, drop=padding)
+            valid_features, valid_labels = generate_pred_samples_original(valid_repr, valid_data, pred_len)
+            test_features, test_labels = generate_pred_samples_original(test_repr, test_data, pred_len)
+        else:
+            train_features, train_labels = generate_pred_samples(train_repr, train_data, pred_len, seq_len, drop=padding)
+            valid_features, valid_labels = generate_pred_samples(valid_repr, valid_data, pred_len, seq_len)
+            test_features, test_labels = generate_pred_samples(test_repr, test_data, pred_len, seq_len)
 
         print("train feature: ", train_features.shape)
         print("train labels: ", train_labels.shape)
