@@ -17,7 +17,7 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
     if 'ts2vec-dlinear' in type_of_train.lower():
         return TS2VecDlinear(input_dims=dim, device=current_device, mode=type_of_train, n_time_cols=n_time_cols, **configuration)
     else:
-        return TS2Vec(input_dims=dim, device=current_device, **configuration)
+        return TS2Vec(input_dims=dim, device=current_device, mode=mode, **configuration)
 
 
 # To configure the path to store the files and the dataset
@@ -26,6 +26,7 @@ config.read('config.ini')
 mode = config['EXECUTION TYPE'].get('mode')
 path = config['SETTINGS'].get('path')
 dataset = config['SETTINGS'].get('dataset')
+seq_len = config['PARAMETERS'].getint('seq_len')
 
 # To extract the csv from the electricity dataset: it is downloaded as a txt file named as LD2011_2014
 if dataset == 'LD2011_2014':
@@ -101,7 +102,7 @@ print(f"\nTraining time: {datetime.timedelta(seconds=t)}\n")
 
 print("\n----------------- EVAL FORECASTING -------------------\n")
 
-out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols)
+out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len)
 
 print("\n----------------- FINAL RESULTS --------------------\n")
 
