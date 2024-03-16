@@ -23,7 +23,8 @@ class TS2Vec:
         max_train_length=None,
         temporal_unit=0,
         after_iter_callback=None,
-        after_epoch_callback=None
+        after_epoch_callback=None,
+        mode='ts2vec'
     ):
         ''' Initialize a TS2Vec model.
         
@@ -57,6 +58,7 @@ class TS2Vec:
         
         self.n_epochs = 0
         self.n_iters = 0
+        self.mode = mode
     
     def fit(self, train_data, n_epochs=None, n_iters=None, verbose=False):
         ''' Training the TS2Vec model.
@@ -85,9 +87,10 @@ class TS2Vec:
             train_data = centerize_vary_length_series(train_data)
                 
         train_data = train_data[~np.isnan(train_data).all(axis=2).all(axis=1)]
-        
-        # train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
-        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=7)
+
+        train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
+        if self.mode == 'feature':
+            train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=7)
         train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True, drop_last=True)
         
         optimizer = torch.optim.AdamW(self._net.parameters(), lr=self.lr)
@@ -232,9 +235,10 @@ class TS2Vec:
 
         org_training = self.net.training
         self.net.eval()
-        
-        # dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
-        dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), 7)
+
+        dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
+        if self.mode == 'feature':
+            dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), 7)
         loader = DataLoader(dataset, batch_size=batch_size)
         
         with torch.no_grad():
