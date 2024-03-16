@@ -199,7 +199,7 @@ class TS2VecDlinear:
                 if self.after_iter_callback is not None:
                     self.after_iter_callback(self, loss.item())
 
-                break # only one iteration
+                # break # only one iteration
 
             if interrupted:
                 break
@@ -213,7 +213,7 @@ class TS2VecDlinear:
             if self.after_epoch_callback is not None:
                 self.after_epoch_callback(self, cum_loss)
 
-            break # only one epoch
+            # break # only one epoch
             
         return loss_log
     
