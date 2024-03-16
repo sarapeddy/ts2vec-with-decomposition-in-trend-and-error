@@ -24,7 +24,7 @@ def extract_data_from_file(file_path):
             data = data['ours']
             match = re.search(r'([^/]+)__forecast_multivar_', file_path).group(1)
             splits = file_path.split('/')
-            model_name = splits[2]
+            model_name = splits[3]
             extract_data = {model_name:{match: {}}}
             for key in data.keys():
                 extract_data[model_name][match][key] ={
@@ -71,4 +71,4 @@ def main(directory, output_csv):
 
 if __name__ == "__main__":
     output_csv = "results.csv"  # Cambia il nome del file CSV se necessario
-    main('./training', output_csv)
+    main('./training/seq_len_336/', output_csv)
