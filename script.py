@@ -13,9 +13,9 @@ from tasks.forecasting import eval_forecasting
 from ts2vec_dlinear import TS2VecDlinear
 
 
-def create_model(type_of_train, dim, current_device, configuration):
+def create_model(type_of_train, dim, n_time_cols, current_device, configuration):
     if 'ts2vec-dlinear' in type_of_train.lower():
-        return TS2VecDlinear(input_dims=dim, device=current_device, mode=type_of_train, **configuration)
+        return TS2VecDlinear(input_dims=dim, device=current_device, mode=type_of_train, n_time_cols=n_time_cols, **configuration)
     else:
         return TS2Vec(input_dims=dim, device=current_device, **configuration)
 
@@ -82,7 +82,7 @@ if mode == 'feature':
 t = time.time()
 
 # Train a TS2Vec model
-model = create_model(mode, input_dim, device, config)
+model = create_model(mode, input_dim, n_time_cols, device, config)
 
 loss_log = model.fit(
     train_data,

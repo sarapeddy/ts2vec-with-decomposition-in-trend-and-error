@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader
 import numpy as np
 from models import TSEncoder
 from models.losses import hierarchical_contrastive_loss
@@ -8,15 +8,20 @@ from moving_avg_tensor_dataset import TimeSeriesDatasetWithMovingAvg
 from utils import take_per_row, split_with_nan, centerize_vary_length_series, torch_pad_nan
 
 
-def collate_fn(batch):
+def custom_collate_fn(batch, n_time_cols=7):
     # Stack della lista di tensori in un unico tensore
     data = torch.stack([item[0] for item in batch], dim=0)
-    total_covariate = (data.shape[2] - 7)//2
+    total_covariate = (data.shape[2] - n_time_cols)//2
 
-    result_data_avg = torch.cat([data[:, :, :7], data[:, :, 7:7+total_covariate]], dim=2)
-    result_data_err = torch.cat([data[:, :, :7], data[:, :, 7 + total_covariate:]], dim=2)
+    result_data_avg = torch.cat([data[:, :, :n_time_cols], data[:, :, n_time_cols:n_time_cols+total_covariate]], dim=2)
+    result_data_err = torch.cat([data[:, :, :n_time_cols], data[:, :, n_time_cols + total_covariate:]], dim=2)
     return result_data_avg, result_data_err
 
+def create_custom_dataLoader(dataset, batch_size, n_time_cols=7):
+    def collate_fn(batch):
+        return custom_collate_fn(batch, n_time_cols=n_time_cols)
+
+    return DataLoader(dataset, batch_size=min(batch_size, len(dataset)), shuffle=True, drop_last=True, collate_fn=collate_fn)
 
 class TS2VecDlinear:
     '''The TS2Vec model'''
@@ -34,7 +39,8 @@ class TS2VecDlinear:
         temporal_unit=0,
         after_iter_callback=None,
         after_epoch_callback=None,
-        mode='ts2vec-Dlinear-two-loss'
+        mode='ts2vec-Dlinear-two-loss',
+        n_time_cols=7
     ):
         ''' Initialize a TS2Vec model.
         
@@ -72,6 +78,7 @@ class TS2VecDlinear:
         self.n_epochs = 0
         self.n_iters = 0
         self.mode = mode
+        self.n_time_cols = n_time_cols
     
     def fit(self, train_data, n_epochs=None, n_iters=None, verbose=False):
         ''' Training the TS2Vec model.
@@ -100,11 +107,9 @@ class TS2VecDlinear:
             train_data = centerize_vary_length_series(train_data)
                 
         train_data = train_data[~np.isnan(train_data).all(axis=2).all(axis=1)]
-        
-        # train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
+
         train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=7)
-        train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True,
-                                  drop_last=True, collate_fn=collate_fn)
+        train_loader = create_custom_dataLoader(train_dataset, self.batch_size, n_time_cols=self.n_time_cols)
         
         optimizer1 = torch.optim.AdamW(self._net_avg.parameters(), lr=self.lr)
         optimizer2 = torch.optim.AdamW(self._net_err.parameters(), lr=self.lr)
@@ -157,7 +162,7 @@ class TS2VecDlinear:
                 out2_err = out2_err[:, :crop_l]
 
                 loss = torch.tensor(0., device=x.device)
-                if self.mode == 'ts2vec-Dlinears-two-loss':
+                if self.mode == 'ts2vec-Dlinear-two-loss':
                     loss1 = hierarchical_contrastive_loss(
                         out1_avg,
                         out2_avg,
