@@ -17,9 +17,12 @@ def custom_collate_fn(batch, n_time_cols=7):
     result_data_err = torch.cat([data[:, :, :n_time_cols], data[:, :, n_time_cols + total_covariate:]], dim=2)
     return result_data_avg, result_data_err
 
-def create_custom_dataLoader(dataset, batch_size, n_time_cols=7):
+def create_custom_dataLoader(dataset, batch_size, n_time_cols=7, eval=False):
     def collate_fn(batch):
         return custom_collate_fn(batch, n_time_cols=n_time_cols)
+
+    if eval:
+        return DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
 
     return DataLoader(dataset, batch_size=min(batch_size, len(dataset)), shuffle=True, drop_last=True, collate_fn=collate_fn)
 
@@ -196,7 +199,7 @@ class TS2VecDlinear:
                 if self.after_iter_callback is not None:
                     self.after_iter_callback(self, loss.item())
 
-                # break # only one iteration
+                break # only one iteration
 
             if interrupted:
                 break
@@ -210,7 +213,7 @@ class TS2VecDlinear:
             if self.after_epoch_callback is not None:
                 self.after_epoch_callback(self, cum_loss)
 
-            # break # only one epoch
+            break # only one epoch
             
         return loss_log
     
@@ -312,7 +315,7 @@ class TS2VecDlinear:
 
         # dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
         dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), 7)
-        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
+        loader = create_custom_dataLoader(dataset, self.batch_size, n_time_cols=self.n_time_cols, eval=True)
         
         with torch.no_grad():
             output1 = []
