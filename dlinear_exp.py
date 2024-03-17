@@ -3,9 +3,8 @@ import time
 
 import numpy as np
 from torch import nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
-from data_provider_dlinear.data_factory import data_provider
 from utils_dlinear.tools_dlinear import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 
 from models.DLinear import Model
@@ -35,10 +34,6 @@ class DLinear:
         self.test_flop = test_flop
         self.embed = embed
         self.model = Model(seq_len, pred_len, enc_in, individual)
-
-    def _get_data(self, name_dataset, flag):
-        data_set, data_loader = data_provider(name_dataset, flag)
-        return data_set, data_loader
 
     def _select_optimizer(self):
         model_optim = torch.optim.Adam(self.model.parameters(), lr=self.lr)
@@ -198,12 +193,6 @@ class DLinear:
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
-
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.use_amp:
                     with torch.cuda.amp.autocast():
@@ -272,13 +261,7 @@ class DLinear:
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros([batch_y.shape[0], self.pred_len, batch_y.shape[2]]).float().to(
-                    batch_y.device)
-                dec_inp = torch.cat([batch_y[:, :self.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.use_amp:
                     with torch.cuda.amp.autocast():
