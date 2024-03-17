@@ -16,11 +16,9 @@ def generate_pred_samples_original(features, data, pred_len, drop=0):
 
 def generate_pred_samples(features, data, pred_len, seq_len, drop=0):
     n = data.shape[1] - seq_len - pred_len + 1
-    # features = features[:, :-pred_len]
-    # labels = np.stack([ data[:, i:1+n+i-pred_len] for i in range(pred_len)], axis=2)[:, 1:]
 
-    features = np.stack([ features[:, i:i+seq_len] for i in range(n)], axis=1)
-    labels = np.stack([data[:, i+seq_len:i+seq_len+pred_len] for i in range(n)], axis=1)
+    features = np.stack([ features[:, i:i+seq_len] for i in range(n)], axis=1)[:, 1:]
+    labels = np.stack([data[:, i+seq_len:i+seq_len+pred_len] for i in range(n)], axis=1)[:, 1:]
 
     features = features[:, drop:]
     labels = labels[:, drop:]
@@ -86,7 +84,7 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         print("-----------------")
         
         t = time.time()
-        lr = eval_protocols.fit_ridge(train_features, train_labels, valid_features, valid_labels, seq_len, pred_len)
+        lr = eval_protocols.fit_ridge(train_features, train_labels, valid_features, valid_labels, pred_len)
         lr_train_time[pred_len] = time.time() - t
         
         t = time.time()
