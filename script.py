@@ -11,13 +11,13 @@ import pandas as pd
 from configparser import ConfigParser
 from tasks.forecasting import eval_forecasting
 from ts2vec_dlinear import TS2VecDlinear
+from dlinear_exp import DLinear
 
 
 def create_model(type_of_train, dim, n_time_cols, current_device, configuration):
     if 'ts2vec-dlinear' in type_of_train.lower():
         return TS2VecDlinear(input_dims=dim, device=current_device, mode=type_of_train, n_time_cols=n_time_cols, **configuration)
-    else:
-        return TS2Vec(input_dims=dim, device=current_device, mode=mode, **configuration)
+    return TS2Vec(input_dims=dim, device=current_device, mode=mode, **configuration)
 
 
 # To configure the path to store the files and the dataset
@@ -60,6 +60,8 @@ print('------------')
 print(scaler)
 
 train_data = data[:, train_slice]
+valid_data = data[:, valid_slice]
+test_data = data[:, test_slice]
 print(train_data)
 print(train_data.shape)
 
@@ -68,51 +70,76 @@ string_seq_len = f'seq_len_{seq_len}' if seq_len else 'normal'
 run_dir = f'{path}/training/{string_seq_len}/{mode}/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
 os.makedirs(run_dir, exist_ok=True)
 
-print("\n------------------- TRAINING ENCODER -------------------\n")
+if mode.lower() != 'DLinear'.lower():
 
-config = dict(
-    batch_size=8,
-    lr=0.001,
-    output_dims=320,
-    max_train_length=3000,
-)
+    print("\n------------------- TRAINING ENCODER -------------------\n")
 
-input_dim = train_data.shape[-1]
-if mode == 'feature':
-    input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
+    input_dim = train_data.shape[-1]
+    if mode == 'feature':
+        input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
 
-t = time.time()
+    config = dict(
+        batch_size=8,
+        lr=0.001,
+        output_dims=320,
+        max_train_length=3000,
+    )
 
-# Train a TS2Vec model
-model = create_model(mode, input_dim, n_time_cols, device, config)
+    # Train a TS2Vec model
+    model = create_model(mode, input_dim, n_time_cols, device, config)
 
-loss_log = model.fit(
-    train_data,
-    n_epochs=None,
-    n_iters=None,
-    verbose=True
-)
+    t = time.time()
 
-if 'ts2vec-dlinear' in mode.lower():
-    model.save(f'{run_dir}/model_avg.pkl', f'{run_dir}/model_err.pkl')
+    loss_log = model.fit(
+        train_data,
+        n_epochs=None,
+        n_iters=None,
+        verbose=True
+    )
+
+    if 'ts2vec-dlinear' in mode.lower():
+        model.save(f'{run_dir}/model_avg.pkl', f'{run_dir}/model_err.pkl')
+    else:
+        model.save(f'{run_dir}/model.pkl')
+
+    t = time.time() - t
+    print(f"\nTraining time: {datetime.timedelta(seconds=t)}\n")
+
+    print("\n----------------- EVAL FORECASTING -------------------\n")
+
+    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len if seq_len else None)
+
+    print("\n----------------- FINAL RESULTS --------------------\n")
+
+    utils.pkl_save(f'{run_dir}/out.pkl', out)
+    utils.pkl_save(f'{run_dir}/eval_res.pkl', eval_res)
+    with open(f'{run_dir}/eval_res.json', 'w') as json_file:
+        json.dump(eval_res, json_file, indent=4)
+
+    print('Evaluation result:', eval_res)
+
 else:
-    model.save(f'{run_dir}/model.pkl')
+    print("\n----------------- EVAL FORECASTING -------------------\n")
 
-t = time.time() - t
-print(f"\nTraining time: {datetime.timedelta(seconds=t)}\n")
+    results = {}
+    for pred_len in pred_lens:
+        config = dict(
+            name_dataset = dataset,
+            seq_len=seq_len,
+            pred_len=pred_len,
+            enc_in=data.shape[-1]-n_time_cols,
+            individual=False,
+            lr = 0.001,
+            batch_size = 16 if dataset == 'electricity' else 8,
+        )
 
-print("\n----------------- EVAL FORECASTING -------------------\n")
+        model = DLinear(device, **config)
+        model.train(train_data, valid_data, test_data, scaler)
+        results = model.test(data, test_slice, results=results)
 
-out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len if seq_len else None)
+    print("\n----------------- FINAL RESULTS --------------------\n")
 
-print("\n----------------- FINAL RESULTS --------------------\n")
-
-utils.pkl_save(f'{run_dir}/out.pkl', out)
-utils.pkl_save(f'{run_dir}/eval_res.pkl', eval_res)
-with open(f'{run_dir}/eval_res.json', 'w') as json_file:
-    json.dump(eval_res, json_file, indent=4)
-
-print('Evaluation result:', eval_res)
+    print(results)
 
 torch.cuda.empty_cache()
 
