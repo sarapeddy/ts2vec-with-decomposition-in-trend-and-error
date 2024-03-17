@@ -39,21 +39,21 @@ class series_decomp(nn.Module):
         return res, moving_mean
 
 
-class DLinear(nn.Module):
+class Model(nn.Module):
     """
     Decomposition-Linear
     """
 
-    def __init__(self, configs):
-        super(DLinear, self).__init__()
-        self.seq_len = configs.seq_len
-        self.pred_len = configs.pred_len
+    def __init__(self, seq_len, pred_len, enc_in, individual):
+        super(Model, self).__init__()
+        self.seq_len = seq_len
+        self.pred_len = pred_len
 
         # Decompsition Kernel Size
         kernel_size = 25
         self.decompsition = series_decomp(kernel_size)
-        self.individual = configs.individual
-        self.channels = configs.enc_in
+        self.individual = individual
+        self.channels = enc_in
 
         if self.individual:
             self.Linear_Seasonal = nn.ModuleList()
