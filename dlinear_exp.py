@@ -10,13 +10,15 @@ from utils_dlinear.tools_dlinear import EarlyStopping, adjust_learning_rate, vis
 from models.DLinear import Model
 import torch
 from tasks.forecasting import cal_metrics
-from dlinear_dataset import DLinearDateset
+from dataset_dlinear import DatasetDlinear
 
 
 class DLinear:
-    def __init__(self, device, name_dataset='ETTm1', seq_len=96, pred_len=24, enc_in=7, individual=False, batch_size=8, lr=0.0001, label_len=48, use_amp=False, output_attention=False,
-                 features='MS', num_workers=10, checkpoints='./checkpoints', patience=3, train_epochs=10, test_flop=False, embed='timeF'):
+    def __init__(self, device, n_time_cols, run_dir, name_dataset='ETTm1', seq_len=96, pred_len=24, enc_in=7, individual=False, batch_size=8, lr=0.0001, label_len=48, use_amp=False, output_attention=False,
+                 features='M', num_workers=10, patience=3, train_epochs=10, test_flop=False, embed='timeF'):
         self.device = device
+        self.n_time_cols = n_time_cols
+        self.run_dir = run_dir
         self.name_dataset = name_dataset
         self.lr = lr
         self.batch_size = batch_size
@@ -30,10 +32,10 @@ class DLinear:
         self.use_amp = use_amp
         self.num_workers = num_workers
         self.output_attention = output_attention
-        self.checkpoints = checkpoints
+        self.checkpoints = f'{self.run_dir}./checkpoints'
         self.test_flop = test_flop
         self.embed = embed
-        self.model = Model(seq_len, pred_len, enc_in, individual)
+        self.model = Model(seq_len, pred_len, enc_in, individual).float().to(self.device)
 
     def _select_optimizer(self):
         model_optim = torch.optim.Adam(self.model.parameters(), lr=self.lr)
@@ -47,13 +49,10 @@ class DLinear:
         total_loss = []
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            for i, (batch_x, batch_y) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
 
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.use_amp:
                     with torch.cuda.amp.autocast():
@@ -77,18 +76,13 @@ class DLinear:
 
     def train(self, train_data, vali_data, test_data, scaler):
 
-        # SISTEMARE QUI IL DATASET E IL DATASET E IL DATALOADER
-        train_dataset = DLinearDateset(train_data, self.seq_len, self.pred_len, self.label_len)
-        vali_dataset = DLinearDateset(vali_data, self.seq_len, self.pred_len, self.label_len)
-        test_dataset = DLinearDateset(test_data, self.seq_len, self.pred_len, self.label_len)
+        train_dataset = DatasetDlinear(torch.from_numpy(train_data).to(torch.float), seq_len=self.seq_len, label_len=self.label_len, pred_len=self.pred_len, n_time_cols=self.n_time_cols, flag='train')
+        vali_dataset = DatasetDlinear(torch.from_numpy(vali_data).to(torch.float), seq_len=self.seq_len, label_len=self.label_len, pred_len=self.pred_len, n_time_cols=self.n_time_cols, flag='val')
+        test_dataset = DatasetDlinear(torch.from_numpy(test_data).to(torch.float), seq_len=self.seq_len, label_len=self.label_len, pred_len=self.pred_len, n_time_cols=self.n_time_cols, flag='test')
 
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers, drop_last=True)
-        vali_loader = DataLoader(vali_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, drop_last=True)
-        test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, drop_last=True)
-
-        # train_data, train_loader = self._get_data(self.name_dataset, 'train')
-        # vali_data, vali_loader = self._get_data(self.name_dataset, 'vali')
-        # test_data, test_loader = self._get_data(self.name_dataset, 'test')
+        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
+        vali_loader = DataLoader(vali_dataset, batch_size=self.batch_size, shuffle=False, drop_last=False)
+        test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
 
         path = os.path.join(self.checkpoints, 'DLinear')
         if not os.path.exists(path):
@@ -172,24 +166,24 @@ class DLinear:
 
         return self.model
 
-    def test(self, data, test_slice, results, test=0):
-        test_data = data[:, test_slice]
-        test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, drop_last=True)
+    def test(self, test_data, results, test=0):
+        test_dataset = DatasetDlinear(torch.from_numpy(test_data).to(torch.float), seq_len=self.seq_len,  label_len=self.label_len, pred_len=self.pred_len, n_time_cols=self.n_time_cols, flag='test')
+        test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, drop_last=True)
 
         if test:
             print('loading model')
-            self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + f'Dlinear__{self.seq_len}__{self.pred_len}', 'checkpoint.pth')))
+            self.model.load_state_dict(torch.load(os.path.join(f'{self.run_dir}/checkpoints/' + f'Dlinear__{self.seq_len}__{self.pred_len}', 'checkpoint.pth')))
 
         preds = []
         trues = []
         inputx = []
-        folder_path = './test_results/' + f'Dlinear__{self.seq_len}__{self.pred_len}' + '/'
+        folder_path = f'{self.run_dir}/test_results/' + f'Dlinear__{self.seq_len}__{self.pred_len}' + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
+            for i, (batch_x, batch_y) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
@@ -231,7 +225,7 @@ class DLinear:
         inputx = inputx.reshape(-1, inputx.shape[-2], inputx.shape[-1])
 
         # result save
-        folder_path = './results/' + f'Dlinear__{self.seq_len}__{self.pred_len}' + '/'
+        folder_path = f'{self.run_dir}/results/' + f'Dlinear__{self.seq_len}__{self.pred_len}' + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
@@ -246,8 +240,8 @@ class DLinear:
         return results
 
     def predict(self, data, pred_slice, load=False):
-        pred_data = data[:, pred_slice]
-        pred_loader = DataLoader(pred_data, batch_size=1, shuffle=False, num_workers=self.num_workers, drop_last=False)
+        pred_dataset = DatasetDlinear(torch.from_numpy(data).to(torch.float), self.seq_len, self.pred_len, self.label_len, self.n_time_cols, flag='pred')
+        pred_loader = DataLoader(pred_dataset, batch_size=self.batch_size, shuffle=False,drop_last=False)
 
         if load:
             path = os.path.join(self.checkpoints,  f'Dlinear__{self.seq_len}__{self.pred_len}')
@@ -258,7 +252,7 @@ class DLinear:
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
+            for i, (batch_x, batch_y) in enumerate(pred_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
 
@@ -276,7 +270,7 @@ class DLinear:
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
 
         # result save
-        folder_path = './results/' +  f'Dlinear__{self.seq_len}__{self.pred_len}' + '/'
+        folder_path = f'{self.run_dir}/results/' +  f'Dlinear__{self.seq_len}__{self.pred_len}' + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 

@@ -133,13 +133,21 @@ else:
             batch_size = 16 if dataset == 'electricity' else 8,
         )
 
-        model = DLinear(device, **config)
+        model = DLinear(device, n_time_cols, run_dir, **config)
+
+        print(f"Training DLinear for pred_len = {pred_len}")
+
         model.train(train_data, valid_data, test_data, scaler)
-        results = model.test(data, test_slice, results=results)
+
+        print(f"Testing DLinear for pred_len = {pred_len}")
+
+        results = model.test(test_data, results=results)
 
     print("\n----------------- FINAL RESULTS --------------------\n")
 
     print(results)
+    with open(f'{run_dir}/eval_res.json', 'w') as json_file:
+        json.dump(results, json_file, indent=4)
 
 torch.cuda.empty_cache()
 
