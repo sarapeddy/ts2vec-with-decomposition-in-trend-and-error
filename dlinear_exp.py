@@ -32,7 +32,7 @@ class DLinear:
         self.use_amp = use_amp
         self.num_workers = num_workers
         self.output_attention = output_attention
-        self.checkpoints = f'{self.run_dir}./checkpoints'
+        self.checkpoints = f'{self.run_dir}/checkpoints'
         self.test_flop = test_flop
         self.embed = embed
         self.model = Model(seq_len, pred_len, enc_in, individual).float().to(self.device)
