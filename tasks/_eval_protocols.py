@@ -94,7 +94,7 @@ def fit_ridge(train_features, train_y, valid_features, valid_y, MAX_SAMPLES=1000
         )
         valid_features = split[0]
         valid_y = split[2]
-    
+
     alphas = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
     valid_results = []
     for alpha in alphas:
@@ -103,7 +103,7 @@ def fit_ridge(train_features, train_y, valid_features, valid_y, MAX_SAMPLES=1000
         score = np.sqrt(((valid_pred - valid_y) ** 2).mean()) + np.abs(valid_pred - valid_y).mean()
         valid_results.append(score)
     best_alpha = alphas[np.argmin(valid_results)]
-    
+
     lr = Ridge(alpha=best_alpha)
     lr.fit(train_features, train_y)
     return lr
