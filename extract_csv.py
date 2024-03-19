@@ -2,6 +2,7 @@ import os
 import re
 import json
 import pandas as pd
+from argparse import ArgumentParser
 
 def find_eval_res_files(start_path):
     """
@@ -70,5 +71,8 @@ def main(directory, output_csv):
     print(f"Data saved in {output_csv}")
 
 if __name__ == "__main__":
+    parser = ArgumentParser(description='Insertion of correct path to save the csv')
+    parser.add_argument('--directory', type=str, help='Directory where the eval_res.json files are located')
+    args = parser.parse_args()
     output_csv = "results.csv"  # Cambia il nome del file CSV se necessario
-    main('./training/seq_len_336/', output_csv)
+    main(f'./training/{args.directory}', output_csv)
