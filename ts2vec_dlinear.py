@@ -164,7 +164,6 @@ class TS2VecDlinear:
                 out2_err = self._net_err(take_per_row(y, crop_offset + crop_left, crop_eright - crop_left))
                 out2_err = out2_err[:, :crop_l]
 
-                loss = torch.tensor(0., device=x.device)
                 if self.mode == 'ts2vec-Dlinear-two-loss':
                     loss1 = hierarchical_contrastive_loss(
                         out1_avg,

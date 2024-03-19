@@ -107,8 +107,7 @@ if mode.lower() != 'DLinear'.lower():
 
     print("\n----------------- EVAL FORECASTING -------------------\n")
 
-    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len if seq_len else None)
-
+    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len)
     print("\n----------------- FINAL RESULTS --------------------\n")
 
     utils.pkl_save(f'{run_dir}/out.pkl', out)
@@ -141,7 +140,7 @@ else:
 
         print(f"Testing DLinear for pred_len = {pred_len}")
 
-        results = model.test(test_data, results=results)
+        results = model.test(test_data, scaler, results=results)
 
     print("\n----------------- FINAL RESULTS --------------------\n")
 
