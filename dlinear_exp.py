@@ -168,7 +168,7 @@ class DLinear:
 
         return self.model
 
-    def test(self, test_data, results, test=0):
+    def test(self, test_data, scaler, results, test=0):
         test_dataset = DatasetDlinear(torch.from_numpy(test_data).to(torch.float), seq_len=self.seq_len,  label_len=self.label_len, pred_len=self.pred_len, n_time_cols=self.n_time_cols, flag='test')
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, drop_last=True)
 
@@ -232,7 +232,8 @@ class DLinear:
             os.makedirs(folder_path)
 
         results['ours'][self.pred_len] = {
-            'norm': cal_metrics(preds.astype(np.float64), trues.astype(np.float64))
+            'norm': cal_metrics(preds.astype(np.float64), trues.astype(np.float64)),
+            'raw': cal_metrics(scaler.inverse_transform(preds).astype(np.float64), scaler.inverse_transform(trues).astype(np.float64))
         }
 
         # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))
@@ -242,7 +243,7 @@ class DLinear:
         return results
 
     def predict(self, data, pred_slice, load=False):
-        pred_dataset = DatasetDlinear(torch.from_numpy(data).to(torch.float), self.seq_len, self.pred_len, self.label_len, self.n_time_cols, flag='pred')
+        pred_dataset = DatasetDlinear(torch.from_numpy(data).to(torch.float), seq_len=self.seq_len, pred_len=self.pred_len, label_len=self.label_len, n_time_cols=self.n_time_cols, flag='pred')
         pred_loader = DataLoader(pred_dataset, batch_size=self.batch_size, shuffle=False,drop_last=False)
 
         if load:
