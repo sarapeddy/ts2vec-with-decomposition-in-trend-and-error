@@ -161,6 +161,8 @@ class DLinear:
 
             adjust_learning_rate(model_optim, epoch + 1, self.lr)
 
+            # break # Remove this line to train the model for the full number of epochs
+
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
 
@@ -229,8 +231,8 @@ class DLinear:
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        results[self.pred_len] = {
-            'norm': cal_metrics(preds, trues),
+        results['ours'][self.pred_len] = {
+            'norm': cal_metrics(preds.astype(np.float64), trues.astype(np.float64))
         }
 
         # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))

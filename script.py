@@ -121,11 +121,11 @@ if mode.lower() != 'DLinear'.lower():
 else:
     print("\n----------------- EVAL FORECASTING -------------------\n")
 
-    results = {}
+    results = {'ours': {}}
     for pred_len in pred_lens:
         config = dict(
             name_dataset = dataset,
-            seq_len=seq_len,
+            seq_len=seq_len if seq_len else 96,
             pred_len=pred_len,
             enc_in=data.shape[-1]-n_time_cols,
             individual=False,
