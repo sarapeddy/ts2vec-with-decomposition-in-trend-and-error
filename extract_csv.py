@@ -29,8 +29,8 @@ def extract_data_from_file(file_path):
             extract_data = {model_name:{match: {}}}
             for key in data.keys():
                 extract_data[model_name][match][key] ={
-                    'MAE': data[key]['norm']['MAE'],
-                    'MSE': data[key]['norm']['MSE']
+                    'MAE': round(data[key]['norm']['MAE'], 4),
+                    'MSE': round(data[key]['norm']['MSE'], 4)
                 }
             return extract_data
     except Exception as e:
