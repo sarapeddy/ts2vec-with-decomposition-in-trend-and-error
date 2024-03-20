@@ -14,7 +14,7 @@ from dataset_dlinear import DatasetDlinear
 
 
 class DLinear:
-    def __init__(self, device, n_time_cols, run_dir, name_dataset='ETTm1', seq_len=96, pred_len=24, enc_in=7, individual=False, batch_size=8, lr=0.0001, label_len=48, use_amp=False, output_attention=False,
+    def __init__(self, device, n_time_cols, run_dir, name_dataset='ETTm1', seq_len=96, pred_len=24, enc_in=7, individual=False, batch_size=8, lr=0.0001, label_len=0, use_amp=False, output_attention=False,
                  features='M', num_workers=10, patience=3, train_epochs=10, test_flop=False, embed='timeF'):
         self.device = device
         self.n_time_cols = n_time_cols
