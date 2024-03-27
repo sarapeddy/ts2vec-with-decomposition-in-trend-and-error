@@ -10,12 +10,12 @@ def generate_pred_samples_seq_len(features, data, pred_len, seq_len, drop=0):
 
     features = np.stack([ features[:, i:i+seq_len] for i in range(n)], axis=1)[:, 1:]
     labels = np.stack([data[:, i+seq_len:i+seq_len+pred_len] for i in range(n)], axis=1)[:, 1:]
+    features = features.mean(axis=2)
 
     features = features[:, drop:]
     labels = labels[:, drop:]
 
-    return features.reshape(-1, features.shape[2]*features.shape[3]), \
-            labels.reshape(-1, labels.shape[2]*labels.shape[3])
+    return features.squeeze(), labels.reshape(-1, labels.shape[2]*labels.shape[3])
 
 def generate_pred_samples(features, data, pred_len, drop=0):
     n = data.shape[1]
