@@ -87,6 +87,7 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
 
         t = time.time()
         lr = eval_protocols.fit_ridge(train_features, train_labels, valid_features, valid_labels)
+        # lr = eval_protocols.fit_mlp(train_features, train_labels)
         lr_train_time[pred_len] = time.time() - t
 
         t = time.time()

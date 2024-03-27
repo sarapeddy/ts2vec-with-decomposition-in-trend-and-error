@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.linear_model import Ridge
+from sklearn.multioutput import MultiOutputClassifier, MultiOutputRegressor
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
@@ -107,3 +109,15 @@ def fit_ridge(train_features, train_y, valid_features, valid_y, MAX_SAMPLES=1000
     lr = Ridge(alpha=best_alpha)
     lr.fit(train_features, train_y)
     return lr
+
+def fit_mlp(train_features,  train_y):
+    mlp = MLPRegressor(max_iter=500)
+    mlp.fit(train_features, train_y)
+    return mlp
+
+    # parameters = {
+    #     'alpha': [0.1, 0.2, 0.5, 1] # Termine di regolarizzazione L2
+    # }
+    # clf = GridSearchCV(mlp, parameters)
+    # clf.fit(train_features, train_y)
+    # return clf.best_estimator_
