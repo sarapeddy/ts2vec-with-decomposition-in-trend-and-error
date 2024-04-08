@@ -108,11 +108,11 @@ def main(directory, output_csv):
         raise ValueError(f"Unknown task type")
 
     df.to_csv(f'{directory}/{output_csv}', index=False)
-    print(f"Data saved in {output_csv}")
+    print(f"Data saved in {args.directory}/{output_csv}")
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Insertion of correct path to save the csv')
     parser.add_argument('--directory', type=str, help='Directory where the eval_res.json files are located')
-    args = parser.parse_args(['--directory', 'forecasting/normal'])
+    args = parser.parse_args()
     output_csv = "results.csv"  # Cambia il nome del file CSV se necessario
     main(f'./training/{args.directory}', output_csv)
