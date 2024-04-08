@@ -1,6 +1,8 @@
 import json
 
 import torch.cuda
+
+from tasks import eval_classification
 from ts2vec import TS2Vec
 import datautils
 import utils
@@ -23,6 +25,7 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
 # To configure the path to store the files and the dataset
 config = ConfigParser()
 config.read('config.ini')
+task = config['TASK'].get('task')
 mode = config['EXECUTION TYPE'].get('mode')
 path = config['SETTINGS'].get('path')
 dataset = config['SETTINGS'].get('dataset')
@@ -107,16 +110,21 @@ if mode.lower() != 'DLinear'.lower():
 
     print("\n----------------- EVAL FORECASTING -------------------\n")
 
-    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len)
+    if task == 'forecasting':
+        out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len)
 
-    print("\n----------------- FINAL RESULTS --------------------\n")
+        print("\n----------------- FINAL RESULTS --------------------\n")
 
-    utils.pkl_save(f'{run_dir}/out.pkl', out)
-    utils.pkl_save(f'{run_dir}/eval_res.pkl', eval_res)
-    with open(f'{run_dir}/eval_res.json', 'w') as json_file:
-        json.dump(eval_res, json_file, indent=4)
+        utils.pkl_save(f'{run_dir}/out.pkl', out)
+        utils.pkl_save(f'{run_dir}/eval_res.pkl', eval_res)
+        with open(f'{run_dir}/eval_res.json', 'w') as json_file:
+            json.dump(eval_res, json_file, indent=4)
 
-    print('Evaluation result:', eval_res)
+        print('Evaluation result:', eval_res)
+
+    if task == 'classification':
+        y_score, eval_res = eval_classification()
+
 
 else:
     print("\n----------------- EVAL FORECASTING -------------------\n")
