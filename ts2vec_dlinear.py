@@ -43,7 +43,7 @@ class TS2VecDlinear:
         after_iter_callback=None,
         after_epoch_callback=None,
         mode='ts2vec-Dlinear-two-loss',
-        n_time_cols=7
+        n_time_cols=0
     ):
         ''' Initialize a TS2Vec model.
         
@@ -111,7 +111,7 @@ class TS2VecDlinear:
                 
         train_data = train_data[~np.isnan(train_data).all(axis=2).all(axis=1)]
 
-        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=7)
+        train_dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(train_data).to(torch.float), n_time_cols=self.n_time_cols)
         train_loader = create_custom_dataLoader(train_dataset, self.batch_size, n_time_cols=self.n_time_cols)
         
         optimizer1 = torch.optim.AdamW(self._net_avg.parameters(), lr=self.lr)
@@ -313,7 +313,7 @@ class TS2VecDlinear:
         self.net_err.eval()
 
         # dataset = TensorDataset(torch.from_numpy(data).to(torch.float))
-        dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), 7)
+        dataset = TimeSeriesDatasetWithMovingAvg(torch.from_numpy(data).to(torch.float), self.n_time_cols)
         loader = create_custom_dataLoader(dataset, self.batch_size, n_time_cols=self.n_time_cols, eval=True)
         
         with torch.no_grad():
