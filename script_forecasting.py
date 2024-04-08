@@ -69,7 +69,7 @@ print(train_data.shape)
 
 #Creation of dirs to store results
 string_seq_len = f'seq_len_{seq_len}' if seq_len else 'normal'
-run_dir = f'{path}/training/{string_seq_len}/{mode}/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
+run_dir = f'{path}/training/forecasting/{string_seq_len}/{mode}/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
 os.makedirs(run_dir, exist_ok=True)
 
 if mode.lower() != 'DLinear'.lower():
