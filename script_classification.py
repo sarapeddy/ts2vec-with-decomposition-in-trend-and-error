@@ -24,6 +24,7 @@ mode = config['EXECUTION TYPE'].get('mode')
 path = config['SETTINGS'].get('path')
 loader = config['SETTINGS'].get('loader')
 dataset = config['SETTINGS'].get('dataset')
+batch_size = config['PARAMETERS'].getint('batch_size')
 
 # set GPU
 device = utils.init_dl_program(0, seed=42, max_threads=8)
@@ -48,11 +49,11 @@ print("test labels: " + str(test_labels.shape))
 print("\n----------------- TRAINING ENCODER ------------------------\n")
 
 #Creation of dirs to store results
-run_dir = f'{path}/training/classification/{mode}/' + dataset + '__' + utils.name_with_datetime('classification')
+run_dir = f'{path}/training/classification/B_{batch_size}/{mode}/' + dataset + '__' + utils.name_with_datetime('classification')
 os.makedirs(run_dir, exist_ok=True)
 
 config = dict(
-    batch_size=8,
+    batch_size=batch_size,
     lr=0.001,
     output_dims=320,
     max_train_length=3000,
