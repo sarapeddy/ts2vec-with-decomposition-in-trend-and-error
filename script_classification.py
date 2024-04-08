@@ -48,7 +48,7 @@ print("test labels: " + str(test_labels.shape))
 print("\n----------------- TRAINING ENCODER ------------------------\n")
 
 #Creation of dirs to store results
-run_dir = f'{path}/training/classification/{mode}/' + dataset + '__' + utils.name_with_datetime('forecast_multivar')
+run_dir = f'{path}/training/classification/{mode}/' + dataset + '__' + utils.name_with_datetime('classification')
 os.makedirs(run_dir, exist_ok=True)
 
 config = dict(
