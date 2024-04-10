@@ -19,7 +19,7 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
     return TS2Vec(input_dims=dim, device=current_device, mode=type_of_train, **configuration)
 
 config = ConfigParser()
-config.read('config.ini')
+config.read('config_classification.ini')
 mode = config['EXECUTION TYPE'].get('mode')
 path = config['SETTINGS'].get('path')
 loader = config['SETTINGS'].get('loader')
