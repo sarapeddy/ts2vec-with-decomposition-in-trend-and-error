@@ -34,7 +34,7 @@ def cal_metrics(pred, target):
     }
 
 
-def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_covariate_cols, seq_len):
+def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_covariate_cols, seq_len, mode):
     padding = 200
 
     t = time.time()
@@ -86,8 +86,12 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         print("-----------------")
 
         t = time.time()
-        lr = eval_protocols.fit_ridge(train_features, train_labels, valid_features, valid_labels)
-        # lr = eval_protocols.fit_mlp(train_features, train_labels)
+
+        if 'mlp' in mode.lower():
+            lr = eval_protocols.fit_mlp(train_features, train_labels, valid_features, valid_labels)
+        else:
+            lr = eval_protocols.fit_ridge(train_features, train_labels, valid_features, valid_labels)
+
         lr_train_time[pred_len] = time.time() - t
 
         t = time.time()

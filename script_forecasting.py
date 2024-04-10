@@ -24,7 +24,7 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
 
 # To configure the path to store the files and the dataset
 config = ConfigParser()
-config.read('config.ini')
+config.read('config_forecasting.ini')
 mode = config['EXECUTION TYPE'].get('mode')
 path = config['SETTINGS'].get('path')
 dataset = config['SETTINGS'].get('dataset')
@@ -109,7 +109,7 @@ if mode.lower() != 'DLinear'.lower():
 
     print("\n----------------- EVAL FORECASTING -------------------\n")
 
-    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len)
+    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len, mode)
 
     print("\n----------------- FINAL RESULTS --------------------\n")
 

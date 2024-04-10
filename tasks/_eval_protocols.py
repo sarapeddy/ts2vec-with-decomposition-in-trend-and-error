@@ -7,7 +7,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split, ParameterGrid
+
 
 def fit_svm(features, y, MAX_SAMPLES=10000):
     nb_classes = np.unique(y, return_counts=True)[1].shape[0]
@@ -110,14 +111,38 @@ def fit_ridge(train_features, train_y, valid_features, valid_y, MAX_SAMPLES=1000
     lr.fit(train_features, train_y)
     return lr
 
-def fit_mlp(train_features,  train_y):
-    mlp = MLPRegressor(max_iter=500)
+def fit_mlp(train_features,  train_y, valid_features, valid_y, MAX_SAMPLES=100000):
+    if train_features.shape[0] > MAX_SAMPLES:
+        split = train_test_split(
+            train_features, train_y,
+            train_size=MAX_SAMPLES, random_state=0
+        )
+        train_features = split[0]
+        train_y = split[2]
+
+    if valid_features.shape[0] > MAX_SAMPLES:
+        split = train_test_split(
+            valid_features, valid_y,
+            train_size=MAX_SAMPLES, random_state=0
+        )
+        valid_features = split[0]
+        valid_y = split[2]
+
+    param_grid = {
+        'alpha': [0.0001, 0.001, 0.01, 0.1],
+        'activation': ['identity', 'logistic', 'tanh', 'relu'],
+        'hidden_layer_sizes': [(50,), (100,), (50, 50), (100, 100)]
+    }
+
+    valid_results = []
+    for params in ParameterGrid(param_grid):
+        mlp = MLPRegressor(max_iter=1000, early_stopping=True, **params)
+        mlp.fit(train_features, train_y)
+        valid_pred = mlp.predict(valid_features)
+        score = np.sqrt(((valid_pred - valid_y) ** 2).mean()) + np.abs(valid_pred - valid_y).mean()
+        valid_results.append(score)
+
+    best_params = list(ParameterGrid(param_grid))[np.argmin(valid_results)]
+    mlp = MLPRegressor(max_iter=1000, early_stopping=True, **best_params)
     mlp.fit(train_features, train_y)
     return mlp
-
-    # parameters = {
-    #     'alpha': [0.1, 0.2, 0.5, 1] # Termine di regolarizzazione L2
-    # }
-    # clf = GridSearchCV(mlp, parameters)
-    # clf.fit(train_features, train_y)
-    # return clf.best_estimator_
