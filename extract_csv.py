@@ -32,7 +32,7 @@ def extract_data_from_file(file_path):
                 raise ValueError(f"Unknown task type")
 
             splits = file_path.split('/')
-            model_name = splits[4] if 'forecasting' in args.directory else splits[3]
+            model_name = splits[4]
             extract_data = {model_name:{match: {}}}
             for key in data.keys():
                 if 'forecasting' in args.directory:
@@ -113,6 +113,7 @@ def main(directory, output_csv):
 if __name__ == "__main__":
     parser = ArgumentParser(description='Insertion of correct path to save the csv')
     parser.add_argument('--directory', type=str, help='Directory where the eval_res.json files are located')
-    args = parser.parse_args()
+    # args = parser.parse_args()
+    args = parser.parse_args(['--directory', 'classification/B_4'])
     output_csv = "results.csv"  # Cambia il nome del file CSV se necessario
     main(f'./training/{args.directory}', output_csv)
