@@ -42,7 +42,7 @@ def reconstruct_label(timestamp, label):
 
     idx = (timestamp_sorted - timestamp_sorted[0]) // interval
 
-    new_label = np.zeros(shape=((timestamp_sorted[-1] - timestamp_sorted[0]) // interval + 1,), dtype=np.int)
+    new_label = np.zeros(shape=((timestamp_sorted[-1] - timestamp_sorted[0]) // interval + 1,), dtype=int)
     new_label[idx] = label
 
     return new_label
