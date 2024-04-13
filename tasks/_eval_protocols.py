@@ -131,7 +131,7 @@ def fit_mlp(train_features,  train_y, valid_features, valid_y, MAX_SAMPLES=10000
     param_grid = {
         'alpha': [0.0001, 0.001, 0.01, 0.1],
         'activation': ['identity', 'logistic', 'tanh', 'relu'],
-        'hidden_layer_sizes': [(50,), (100,), (50, 50), (100, 100)]
+        'hidden_layer_sizes': [(50,), (100,), (50,50)]
     }
 
     valid_results = []
