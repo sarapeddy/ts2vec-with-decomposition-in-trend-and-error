@@ -28,24 +28,32 @@ def extract_data_from_file(file_path):
                 match = re.search(r'([^/]+)__forecast_multivar_', file_path).group(1)
             elif 'classification' in args.directory:
                 match = re.search(r'([^/]+)__classification_', file_path).group(1)
+            elif 'anomaly_detection' in args.directory:
+                match = re.search(r'([^/]+)__anomaly_detection_', file_path).group(1)
             else:
                 raise ValueError(f"Unknown task type")
 
             splits = file_path.split('/')
-            model_name = splits[4]
+            model_name = splits[3] if 'anomaly_detection' in args.directory else splits[4]
             extract_data = {model_name:{match: {}}}
-            for key in data.keys():
-                if 'forecasting' in args.directory:
+            if 'forecasting' in args.directory:
+                for key in data.keys():
                     extract_data[model_name][match][key] ={
                         'MAE': round(data[key]['norm']['MAE'], 4),
                         'MSE': round(data[key]['norm']['MSE'], 4)
                     }
-                elif 'classification' in args.directory:
-                    extract_data[model_name][match] ={
-                        'acc': round(data[key], 4),
-                    }
-                else:
-                    raise ValueError(f"Unknown task type")
+            elif 'classification' in args.directory:
+                extract_data[model_name][match] ={
+                    'acc': round(data['acc'], 4),
+                }
+            elif 'anomaly_detection' in args.directory:
+                extract_data[model_name][match] ={
+                    'f1': round(data['f1'], 4),
+                    'precision': round(data['precision'], 4),
+                    'recall': round(data['recall'], 4)
+                }
+            else:
+                raise ValueError(f"Unknown task type")
             return extract_data
     except Exception as e:
         print(f"Error in {file_path}: {e}")
@@ -92,6 +100,24 @@ def extract_rows_classification(data_list):
     df['Dataset'] = df['Dataset'].where(df['Dataset'] != df['Dataset'].shift(), " ")
     return df
 
+def extract_rows_anomaly_detection(data_list):
+    rows = []
+    for data in data_list:
+        for model_name, datasets in data.items():
+            for dataset_name, metrics in datasets.items():
+                rows.append({
+                    'Model': model_name,
+                    'Dataset': dataset_name,
+                    'f1': metrics['f1'],
+                    'precision': metrics['precision'],
+                    'recall': metrics['recall']
+                })
+
+    df = pd.DataFrame(rows).sort_values(by=['Dataset', 'Model'])
+    df = df.pivot_table(index=['Model'], columns='Dataset', values=['f1', 'precision', 'recall'])
+    df.reset_index(inplace=True)
+    return df
+
 def main(directory, output_csv):
     """
     Extracts MAE e MSE from eval_res.json files and saves them in a CSV file.
@@ -104,6 +130,8 @@ def main(directory, output_csv):
         df = extract_rows_forecasting(data_list)
     elif 'classification' in args.directory:
         df = extract_rows_classification(data_list)
+    elif 'anomaly_detection' in args.directory:
+        df = extract_rows_anomaly_detection(data_list)
     else:
         raise ValueError(f"Unknown task type")
 
