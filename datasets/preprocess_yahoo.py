@@ -40,14 +40,14 @@ if __name__ == '__main__':
     for fn in files_a3:
         df = pd.read_csv(fn)
         dataset.append({
-            'timestamp': df['timestamps'].astype(np.long).tolist(),
+            'timestamp': df['timestamps'].astype(np.longlong).tolist(),
             'value': df['value'].tolist(),
             'label': df['anomaly'].tolist()
         })
     for fn in files_a4:
         df = pd.read_csv(fn)
         dataset.append({
-            'timestamp': df['timestamps'].astype(np.long).tolist(),
+            'timestamp': df['timestamps'].astype(np.longlong).tolist(),
             'value': df['value'].tolist(),
             'label': df['anomaly'].tolist()
         })
