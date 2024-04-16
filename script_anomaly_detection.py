@@ -49,7 +49,7 @@ print("train data: " + str(train_data.shape))
 print("\n----------------- TRAINING ENCODER ------------------------\n")
 
 #Creation of dirs to store results
-run_dir = f'{path}/training/anomaly_detection/{mode}/' + dataset + '__' + utils.name_with_datetime('anomaly_detection')
+run_dir = f'{path}/training/anomaly_detection/{loader}/{mode}/' + dataset + '__' + utils.name_with_datetime('anomaly_detection')
 os.makedirs(run_dir, exist_ok=True)
 
 config = dict(

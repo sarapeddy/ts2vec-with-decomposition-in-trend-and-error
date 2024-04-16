@@ -34,7 +34,7 @@ def extract_data_from_file(file_path):
                 raise ValueError(f"Unknown task type")
 
             splits = file_path.split('/')
-            model_name = splits[3] if 'anomaly_detection' in args.directory else splits[4]
+            model_name = splits[4]
             extract_data = {model_name:{match: {}}}
             if 'forecasting' in args.directory:
                 for key in data.keys():
