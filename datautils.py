@@ -8,12 +8,35 @@ import pickle
 from utils import pkl_load, pad_nan_to_target
 from scipy.io.arff import loadarff
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sktime.datasets import load_from_tsfile_to_dataframe
+
+def load_ts(dataset):
+    train_file = os.path.join('datasets/UCR', dataset, dataset + "_TRAIN.ts")
+    test_file = os.path.join('datasets/UCR', dataset, dataset + "_TEST.ts")
+    train_df_x, train_df_y = load_from_tsfile_to_dataframe(train_file)
+    test_df_x, test_df_y = load_from_tsfile_to_dataframe(test_file)
+
+    train_df = [pd.concat([pd.Series(train_df_y[i]), train_df_x.dim_0[i]]).reset_index(drop=True) for i in range(0, train_df_x.shape[0])]
+    test_df = [pd.concat([pd.Series(test_df_y[i]), test_df_x.dim_0[i]]).reset_index(drop=True) for i in range(0, test_df_x.shape[0])]
+
+    train_df = pd.DataFrame(train_df)
+    test_df = pd.DataFrame(test_df)
+
+    train_df.iloc[:, 0] = train_df.iloc[:, 0].astype(int)
+    test_df.iloc[:, 0] = test_df.iloc[:, 0].astype(int)
+
+    return train_df, test_df
 
 def load_UCR(dataset):
-    train_file = os.path.join('datasets/UCR', dataset, dataset + "_TRAIN.tsv")
-    test_file = os.path.join('datasets/UCR', dataset, dataset + "_TEST.tsv")
-    train_df = pd.read_csv(train_file, sep='\t', header=None)
-    test_df = pd.read_csv(test_file, sep='\t', header=None)
+
+    if dataset not in ['FaultDetectionA']:
+        train_file = os.path.join('datasets/UCR', dataset, dataset + "_TRAIN.tsv")
+        test_file = os.path.join('datasets/UCR', dataset, dataset + "_TEST.tsv")
+        train_df = pd.read_csv(train_file, sep='\t', header=None)
+        test_df = pd.read_csv(test_file, sep='\t', header=None)
+    else:
+        train_df, test_df = load_ts(dataset)
+
     train_array = np.array(train_df)
     test_array = np.array(test_df)
 
@@ -65,7 +88,8 @@ def load_UCR(dataset):
         'SemgHandSubjectCh2',
         'ShakeGestureWiimoteZ',
         'SmoothSubspace',
-        'UMD'
+        'UMD',
+        'FaultDetectionA'
     ]:
         return train[..., np.newaxis], train_labels, test[..., np.newaxis], test_labels
     
