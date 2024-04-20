@@ -29,7 +29,7 @@ def load_ts(dataset):
 
 def load_UCR(dataset):
 
-    if dataset not in ['FaultDetectionA']:
+    if dataset not in ['FaultDetectionA', 'Sleep', 'CatsDogs']:
         train_file = os.path.join('datasets/UCR', dataset, dataset + "_TRAIN.tsv")
         test_file = os.path.join('datasets/UCR', dataset, dataset + "_TEST.tsv")
         train_df = pd.read_csv(train_file, sep='\t', header=None)
