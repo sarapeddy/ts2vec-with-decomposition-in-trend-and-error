@@ -74,7 +74,7 @@ def extract_rows_forecasting(data_list):
                     })
 
     df = pd.DataFrame(rows).sort_values(by=['Model', 'Dataset', 'Prediction Length'])
-    df = df.pivot_table(index=['Dataset', 'Prediction Length'], columns='Model', values=['MAE', 'MSE'])
+    df = df.pivot_table(index=['Dataset', 'Prediction Length'], columns='Model', values=['MAE', 'MSE']).round(4)
     df.columns = [f'{model}_{metric}' for metric, model in df.columns]
     df = df.reindex(sorted(df.columns), axis=1)
     df.reset_index(inplace=True)
@@ -93,7 +93,7 @@ def extract_rows_classification(data_list):
                 })
 
     df = pd.DataFrame(rows).sort_values(by=['Model', 'Dataset'])
-    df = df.pivot_table(index=['Dataset'], columns='Model', values=['acc'])
+    df = df.pivot_table(index=['Dataset'], columns='Model', values=['acc']).round(4)
     df.columns = [f'{model}' for metrics, model in df.columns]
     df = df.reindex(sorted(df.columns), axis=1)
     df.reset_index(inplace=True)
@@ -114,7 +114,7 @@ def extract_rows_anomaly_detection(data_list):
                 })
 
     df = pd.DataFrame(rows).sort_values(by=['Dataset', 'Model'])
-    df = df.pivot_table(index=['Model'], columns='Dataset', values=['f1', 'precision', 'recall'])
+    df = df.pivot_table(index=['Model'], columns='Dataset', values=['f1', 'precision', 'recall']).round(4)
     df.reset_index(inplace=True)
     return df
 
