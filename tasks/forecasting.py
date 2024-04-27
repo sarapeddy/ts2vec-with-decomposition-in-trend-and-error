@@ -5,6 +5,7 @@ import torch
 
 from . import _eval_protocols as eval_protocols
 
+
 def generate_pred_samples_seq_len(features, data, pred_len, seq_len, drop=0):
     n = data.shape[1] - seq_len - pred_len + 1
 
@@ -26,6 +27,10 @@ def generate_pred_samples(features, data, pred_len, drop=0):
     return features.reshape(-1, features.shape[-1]), \
         labels.reshape(-1, labels.shape[2] * labels.shape[3])
 
+def generate_pred_samples_ci(features, data, pred_len, drop=0):
+    features = features.reshape(features.shape[0], features.shape[1], features.shape[2]*features.shape[3])
+    return generate_pred_samples(features, data, pred_len, drop=drop)
+
 
 def cal_metrics(pred, target):
     return {
@@ -34,17 +39,28 @@ def cal_metrics(pred, target):
     }
 
 
-def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_covariate_cols, seq_len, mode):
+def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_covariate_cols, seq_len, mode, ci):
     padding = 200
 
     t = time.time()
-    all_repr = model.encode(
-        data,
-        causal=True,
-        sliding_length=1,
-        sliding_padding=padding,
-        batch_size=256
-    )
+
+    if not ci:
+        all_repr = model.encode(
+            data,
+            causal=True,
+            sliding_length=1,
+            sliding_padding=padding,
+            batch_size=256
+        )
+    else:
+        all_repr = model.encode_ci(
+            data,
+            causal=True,
+            sliding_length=1,
+            sliding_padding=padding,
+            batch_size=256
+        )
+
     ts2vec_infer_time = time.time() - t
 
     train_repr = all_repr[:, train_slice]
@@ -68,10 +84,14 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
     lr_infer_time = {}
     out_log = {}
     for pred_len in pred_lens:
-        if seq_len is None:
+        if seq_len is None and not ci:
             train_features, train_labels = generate_pred_samples(train_repr, train_data, pred_len, drop=padding)
             valid_features, valid_labels = generate_pred_samples(valid_repr, valid_data, pred_len)
             test_features, test_labels = generate_pred_samples(test_repr, test_data, pred_len)
+        elif ci:
+            train_features, train_labels = generate_pred_samples_ci(train_repr, train_data, pred_len, drop=padding)
+            valid_features, valid_labels = generate_pred_samples_ci(valid_repr, valid_data, pred_len)
+            test_features, test_labels = generate_pred_samples_ci(test_repr, test_data, pred_len)
         else:
             train_features, train_labels = generate_pred_samples_seq_len(train_repr, train_data, pred_len, seq_len, drop=padding)
             valid_features, valid_labels = generate_pred_samples_seq_len(valid_repr, valid_data, pred_len, seq_len)
