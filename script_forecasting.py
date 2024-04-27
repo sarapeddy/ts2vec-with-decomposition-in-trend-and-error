@@ -28,7 +28,8 @@ config.read('config_forecasting.ini')
 mode = config['EXECUTION TYPE'].get('mode')
 path = config['SETTINGS'].get('path')
 dataset = config['SETTINGS'].get('dataset')
-seq_len = config['PARAMETERS'].getint('seq_len')
+ci = config['PARAMETERS'].getboolean('ci')
+seq_len = config['PARAMETERS'].get('seq_len')
 
 # To extract the csv from the electricity dataset: it is downloaded as a txt file named as LD2011_2014
 if dataset == 'LD2011_2014':
@@ -76,19 +77,33 @@ if mode.lower() != 'DLinear'.lower():
 
     print("\n------------------- TRAINING ENCODER -------------------\n")
 
-    input_dim = train_data.shape[-1]
-    if mode == 'feature':
-        input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
+    if not ci:
+        input_dim = train_data.shape[-1]
+        if mode == 'feature':
+            input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
 
-    config = dict(
-        batch_size=8,
-        lr=0.001,
-        output_dims=320,
-        max_train_length=3000,
-    )
+        config = dict(
+            batch_size=8,
+            lr=0.001,
+            output_dims=560,
+            max_train_length=3000,
+            ci=ci
+        )
 
-    # Train a TS2Vec model
-    model = create_model(mode, input_dim, n_time_cols, device, config)
+        # Train a TS2Vec model
+        model = create_model(mode, input_dim, n_time_cols, device, config)
+
+    else:
+        config = dict(
+            batch_size=1,
+            lr=0.001,
+            output_dims=40,
+            max_train_length=3000,
+            ci=ci
+        )
+
+        # Train a TS2Vec model
+        model = create_model(mode, 1, n_time_cols, device, config)
 
     t = time.time()
 
@@ -109,7 +124,7 @@ if mode.lower() != 'DLinear'.lower():
 
     print("\n----------------- EVAL FORECASTING -------------------\n")
 
-    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len, mode)
+    out, eval_res = eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_time_cols, seq_len, mode, ci)
 
     print("\n----------------- FINAL RESULTS --------------------\n")
 
