@@ -80,7 +80,7 @@ def np_shift(arr, num, fill_value=np.nan):
     return result
 
 
-def eval_anomaly_detection(model, all_train_data, all_train_labels, all_train_timestamps, all_test_data, all_test_labels, all_test_timestamps, delay):
+def eval_anomaly_detection(model, all_train_data, all_train_labels, all_train_timestamps, all_test_data, all_test_labels, all_test_timestamps, delay, ci):
     t = time.time()
     
     all_train_repr = {}
@@ -91,14 +91,24 @@ def eval_anomaly_detection(model, all_train_data, all_train_labels, all_train_ti
         train_data = all_train_data[k]
         test_data = all_test_data[k]
 
-        full_repr = model.encode(
-            np.concatenate([train_data, test_data]).reshape(1, -1, 1),
-            mask='mask_last',
-            causal=True,
-            sliding_length=1,
-            sliding_padding=200,
-            batch_size=256
-        ).squeeze()
+        if not ci:
+            full_repr = model.encode(
+                np.concatenate([train_data, test_data]).reshape(1, -1, 1),
+                mask='mask_last',
+                causal=True,
+                sliding_length=1,
+                sliding_padding=200,
+                batch_size=256
+            ).squeeze()
+        else:
+            full_repr = model.encode_ci(
+                np.concatenate([train_data, test_data]).reshape(1, -1, 1),
+                mask='mask_last',
+                causal=True,
+                sliding_length=1,
+                sliding_padding=200,
+                batch_size=256
+            ).squeeze()
         all_train_repr[k] = full_repr[:len(train_data)]
         all_test_repr[k] = full_repr[len(train_data):]
 
@@ -149,7 +159,7 @@ def eval_anomaly_detection(model, all_train_data, all_train_labels, all_train_ti
     return res_log, eval_res
 
 
-def eval_anomaly_detection_coldstart(model, all_train_data, all_train_labels, all_train_timestamps, all_test_data, all_test_labels, all_test_timestamps, delay):
+def eval_anomaly_detection_coldstart(model, all_train_data, all_train_labels, all_train_timestamps, all_test_data, all_test_labels, all_test_timestamps, delay, ci):
     t = time.time()
     
     all_data = {}

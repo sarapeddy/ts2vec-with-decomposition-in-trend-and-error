@@ -1,3 +1,4 @@
+import argparse
 import json
 
 import torch.cuda
@@ -23,13 +24,28 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
 
 
 # To configure the path to store the files and the dataset
-config = ConfigParser()
-config.read('config_forecasting.ini')
-mode = config['EXECUTION TYPE'].get('mode')
-path = config['SETTINGS'].get('path')
-dataset = config['SETTINGS'].get('dataset')
-ci = config['PARAMETERS'].getboolean('ci')
-seq_len = config['PARAMETERS'].get('seq_len')
+# config = ConfigParser()
+# config.read('config_forecasting.ini')
+# mode = config['EXECUTION TYPE'].get('mode')
+# path = config['SETTINGS'].get('path')
+# dataset = config['SETTINGS'].get('dataset')
+# ci = config['PARAMETERS'].getboolean('ci')
+# seq_len = config['PARAMETERS'].get('seq_len')
+
+config = argparse.ArgumentParser()
+config.add_argument('--mode', type=str, default='feature')
+config.add_argument('--path', type=str, default='/dati/home/sara.pederzoli/project/ts2vec-main')
+config.add_argument('--dataset', type=str, default='ETTh1')
+config.add_argument('--ci', type=bool, default=True)
+config.add_argument('--seq_len', type=int, default=None)
+
+args = config.parse_args()
+mode = args.mode
+path = args.path
+dataset = args.dataset
+ci = args.ci
+seq_len = args.seq_len
+
 
 # To extract the csv from the electricity dataset: it is downloaded as a txt file named as LD2011_2014
 if dataset == 'LD2011_2014':
