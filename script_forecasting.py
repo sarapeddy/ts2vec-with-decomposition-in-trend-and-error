@@ -85,7 +85,7 @@ if mode.lower() != 'DLinear'.lower():
         config = dict(
             batch_size=8,
             lr=0.001,
-            output_dims=560,
+            output_dims=320,
             max_train_length=3000,
             ci=ci
         )
