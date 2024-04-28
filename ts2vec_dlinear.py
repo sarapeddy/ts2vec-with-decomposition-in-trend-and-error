@@ -346,7 +346,6 @@ class TS2VecDlinear:
                         calc_buffer2 = []
                         calc_buffer_l = 0
                     for i in range(0, ts_l, sliding_length):
-                        print(i)
                         l = i - sliding_padding
                         r = i + sliding_length + (sliding_padding if not causal else 0)
                         x_sliding = torch_pad_nan(
