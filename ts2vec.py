@@ -8,6 +8,15 @@ from moving_avg_tensor_dataset import TimeSeriesDatasetWithMovingAvg
 from utils import take_per_row, split_with_nan, centerize_vary_length_series, torch_pad_nan
 import math
 
+def create_batch_ci(x):
+    x = x.unsqueeze(3)
+    x = x.reshape(x.shape[0] * x.shape[2], x.shape[1], x.shape[3])
+    return x
+
+def create_batch_inv_ci(x, batch_size, feature, dims):
+    x = x.reshape(batch_size, feature, dims)
+    return x
+
 class TS2Vec:
     '''The TS2Vec model'''
     
@@ -122,8 +131,9 @@ class TS2Vec:
                 x = x.to(self.device)
 
                 if self.ci:
-                    x = x.unsqueeze(3)
-                    x = x.reshape(x.shape[0] * x.shape[2], x.shape[1], x.shape[3])
+                    batch_size, feature, dims = x.shape
+                    assert torch.equal(x, create_batch_inv_ci(create_batch_ci(x), batch_size, feature, dims))
+                    x = create_batch_ci(x)
                 
                 ts_l = x.size(1)
                 crop_l = np.random.randint(low=2 ** (self.temporal_unit + 1), high=ts_l+1)
@@ -322,8 +332,7 @@ class TS2Vec:
 
     def _eval_with_pooling_ci(self, x, mask=None, slicing=None, encoding_window=None):
         batch_size, _, feature = x.shape
-        x = x.unsqueeze(3)
-        x = x.reshape(x.shape[0] * x.shape[2], x.shape[1], x.shape[3])
+        x = create_batch_ci(x)
 
         out = self.net(x.to(self.device, non_blocking=True), mask)
         if encoding_window == 'full_series':
@@ -365,7 +374,7 @@ class TS2Vec:
         else:
             if slicing is not None:
                 out = out[:, slicing]
-                out = out.reshape(batch_size, feature, self.output_dims)
+                out = create_batch_inv_ci(out, batch_size, feature, self.output_dims)
 
         return out.cpu()
 

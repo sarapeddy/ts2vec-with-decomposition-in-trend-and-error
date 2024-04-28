@@ -26,6 +26,15 @@ def create_custom_dataLoader(dataset, batch_size, n_time_cols=7, eval=False):
 
     return DataLoader(dataset, batch_size=min(batch_size, len(dataset)), shuffle=True, drop_last=True, collate_fn=collate_fn)
 
+def create_batch_ci(x):
+    x = x.unsqueeze(3)
+    x = x.reshape(x.shape[0] * x.shape[2], x.shape[1], x.shape[3])
+    return x
+
+def create_batch_inv_ci(x, batch_size, feature, dims):
+    x = x.reshape(batch_size, feature, dims)
+    return x
+
 class TS2VecDlinear:
     '''The TS2Vec model'''
     
@@ -143,10 +152,11 @@ class TS2VecDlinear:
                 y = y.to(self.device)
 
                 if self.ci:
-                    x = x.unsqueeze(3)
-                    x = x.reshape(x.shape[0] * x.shape[2], x.shape[1], x.shape[3])
-                    y = y.unsqueeze(3)
-                    y = y.reshape(y.shape[0] * y.shape[2], y.shape[1], y.shape[3])
+                    batch_size, feature, dims = x.shape
+                    assert torch.equal(x, create_batch_inv_ci(create_batch_ci(x), batch_size, feature, dims))
+                    assert torch.equal(y, create_batch_inv_ci(create_batch_ci(y), batch_size, feature, dims))
+                    x = create_batch_ci(x)
+                    y = create_batch_ci(y)
 
                 ts_l = x.size(1)
                 crop_l = np.random.randint(low=2 ** (self.temporal_unit + 1), high=ts_l+1)
@@ -426,10 +436,8 @@ class TS2VecDlinear:
 
     def _eval_with_pooling_ci(self, x, y, mask=None, slicing=None, encoding_window=None):
         batch_size, _, feature = x.shape
-        x = x.unsqueeze(3)
-        x = x.reshape(x.shape[0] * x.shape[2], x.shape[1], x.shape[3])
-        y = y.unsqueeze(3)
-        y = y.reshape(y.shape[0] * y.shape[2], y.shape[1], y.shape[3])
+        x = create_batch_ci(x)
+        y = create_batch_ci(y)
 
         out1 = self.net_err(x.to(self.device, non_blocking=True), mask)
         out2 = self.net_avg(y.to(self.device, non_blocking=True), mask)
@@ -496,8 +504,8 @@ class TS2VecDlinear:
             if slicing is not None:
                 out1 = out1[:, slicing]
                 out2 = out2[:, slicing]
-                out1 = out1.reshape(batch_size, feature, self.output_dims)
-                out2 = out2.reshape(batch_size, feature, self.output_dims)
+                out1 = create_batch_inv_ci(out1, batch_size, feature, self.output_dims)
+                out2 = create_batch_inv_ci(out2, batch_size, feature, self.output_dims)
 
         return out1.cpu(), out2.cpu()
 
