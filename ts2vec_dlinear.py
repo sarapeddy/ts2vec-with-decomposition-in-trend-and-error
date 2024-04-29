@@ -153,6 +153,8 @@ class TS2VecDlinear:
 
                 if self.ci:
                     batch_size, feature, dims = x.shape
+                    x[torch.isnan(x)] = 0
+                    y[torch.isnan(y)] = 0
                     assert torch.equal(x, create_batch_inv_ci(create_batch_ci(x), batch_size, feature, dims))
                     assert torch.equal(y, create_batch_inv_ci(create_batch_ci(y), batch_size, feature, dims))
                     x = create_batch_ci(x)
