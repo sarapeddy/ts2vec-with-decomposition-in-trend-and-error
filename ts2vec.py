@@ -131,12 +131,6 @@ class TS2Vec:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
                     x = x[:, window_offset : window_offset + self.max_train_length]
                 x = x.to(self.device)
-
-                if self.ci:
-                    batch_size, feature, dims = x.shape
-                    x[torch.isnan(x)] = 0
-                    assert torch.equal(x, create_batch_inv_ci(create_batch_ci(x), batch_size, feature, dims))
-                    x = create_batch_ci(x)
                 
                 ts_l = x.size(1)
                 crop_l = np.random.randint(low=2 ** (self.temporal_unit + 1), high=ts_l+1)
@@ -353,7 +347,7 @@ class TS2Vec:
 
     def _eval_with_pooling_ci(self, x, mask=None, slicing=None, encoding_window=None):
         batch_size, _, feature = x.shape
-        x = create_batch_ci(x)
+        x = transform_ci(x)
 
         out = self.net(x.to(self.device, non_blocking=True), mask)
         if encoding_window == 'full_series':
@@ -395,7 +389,7 @@ class TS2Vec:
         else:
             if slicing is not None:
                 out = out[:, slicing]
-                out = create_batch_inv_ci(out, batch_size, feature, self.output_dims)
+                out = transform_inv_ci(out, batch_size, feature, self.output_dims)
 
         return out.cpu()
 
