@@ -26,12 +26,12 @@ def create_custom_dataLoader(dataset, batch_size, n_time_cols=7, eval=False):
 
     return DataLoader(dataset, batch_size=min(batch_size, len(dataset)), shuffle=True, drop_last=True, collate_fn=collate_fn)
 
-def create_batch_ci(x, B, F, T):
+def transform_ci(x, B, F, T):
     x = torch.swapaxes(x, 1, 2)
     x = x.reshape(B * F, T, 1)
     return x
 
-def create_batch_inv_ci(x, B, F, T, E):
+def transform_inv_ci(x, B, F, T, E):
     x = x.reshape(B, F, T, E)
     x = torch.swapaxes(x, 1, 2)
     x = x.reshape(B, T, F * E)
@@ -171,10 +171,10 @@ class TS2VecDlinear:
                 _, T_err2, _ = take_per_row(y, crop_offset + crop_left, crop_eright - crop_left).shape
 
                 if self.ci:
-                    x_spt1 = create_batch_ci(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft), B, F, T_avg1)
-                    x_spt2 = create_batch_ci(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left), B, F, T_avg2)
-                    y_spt1 = create_batch_ci(take_per_row(y, crop_offset + crop_eleft, crop_right - crop_eleft), B, F, T_err1)
-                    y_spt2 = create_batch_ci(take_per_row(y, crop_offset + crop_left, crop_eright - crop_left), B, F, T_err2)
+                    x_spt1 = transform_ci(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft), B, F, T_avg1)
+                    x_spt2 = transform_ci(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left), B, F, T_avg2)
+                    y_spt1 = transform_ci(take_per_row(y, crop_offset + crop_eleft, crop_right - crop_eleft), B, F, T_err1)
+                    y_spt2 = transform_ci(take_per_row(y, crop_offset + crop_left, crop_eright - crop_left), B, F, T_err2)
                 else:
                     x_spt1 = take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft)
                     x_spt2 = take_per_row(x, crop_offset + crop_left, crop_eright - crop_left)
@@ -183,20 +183,20 @@ class TS2VecDlinear:
 
                 # First model: average
                 out1_avg = self._net_avg(x_spt1)
-                out1_avg = create_batch_inv_ci(out1_avg, B, F, T_avg1, self.output_dims) if self.ci else out1_avg
+                out1_avg = transform_inv_ci(out1_avg, B, F, T_avg1, self.output_dims) if self.ci else out1_avg
                 out1_avg = out1_avg[:, -crop_l:]
 
                 out2_avg = self._net_avg(x_spt2)
-                out2_avg = create_batch_inv_ci(out2_avg, B, F, T_avg2, self.output_dims) if self.ci else out2_avg
+                out2_avg = transform_inv_ci(out2_avg, B, F, T_avg2, self.output_dims) if self.ci else out2_avg
                 out2_avg = out2_avg[:, :crop_l]
 
                 # Second model; error
                 out1_err = self._net_err(y_spt1)
-                out1_err = create_batch_inv_ci(out1_err, B, F, T_err1, self.output_dims) if self.ci else out1_err
+                out1_err = transform_inv_ci(out1_err, B, F, T_err1, self.output_dims) if self.ci else out1_err
                 out1_err = out1_err[:, -crop_l:]
 
                 out2_err = self._net_err(y_spt2)
-                out2_err = create_batch_inv_ci(out2_err, B, F, T_err2, self.output_dims) if self.ci else out2_err
+                out2_err = transform_inv_ci(out2_err, B, F, T_err2, self.output_dims) if self.ci else out2_err
                 out2_err = out2_err[:, :crop_l]
 
                 if self.mode == 'ts2vec-Dlinear-two-loss':
@@ -255,15 +255,15 @@ class TS2VecDlinear:
         B, T, F = x.shape
 
         if self.ci:
-            x = create_batch_ci(x, B, F, T)
-            y = create_batch_ci(x, B, F, T)
+            x = transform_ci(x, B, F, T)
+            y = transform_ci(x, B, F, T)
 
         out1 = self.net_err(x.to(self.device, non_blocking=True), mask)
         out2 = self.net_avg(y.to(self.device, non_blocking=True), mask)
 
         if self.ci:
-            out1 = create_batch_inv_ci(out1, B, F, T, self.output_dims)
-            out2 = create_batch_inv_ci(out2, B, F, T, self.output_dims)
+            out1 = transform_inv_ci(out1, B, F, T, self.output_dims)
+            out2 = transform_inv_ci(out2, B, F, T, self.output_dims)
 
         if encoding_window == 'full_series':
             if slicing is not None:
