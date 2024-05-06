@@ -8,13 +8,15 @@ from moving_avg_tensor_dataset import TimeSeriesDatasetWithMovingAvg
 from utils import take_per_row, split_with_nan, centerize_vary_length_series, torch_pad_nan
 import math
 
-def create_batch_ci(x):
-    x = x.unsqueeze(3)
-    x = x.reshape(x.shape[0] * x.shape[2], x.shape[1], x.shape[3])
+def transform_ci(x, B, F, T):
+    x = torch.swapaxes(x, 1, 2)
+    x = x.reshape(B * F, T, 1)
     return x
 
-def create_batch_inv_ci(x, batch_size, feature, dims):
-    x = x.reshape(batch_size, feature, dims)
+def transform_inv_ci(x, B, F, T, E):
+    x = x.reshape(B, F, T, E)
+    x = torch.swapaxes(x, 1, 2)
+    x = x.reshape(B, T, F * E)
     return x
 
 class TS2Vec:
@@ -145,11 +147,24 @@ class TS2Vec:
                 crop_offset = np.random.randint(low=-crop_eleft, high=ts_l - crop_eright + 1, size=x.size(0))
                 
                 optimizer.zero_grad()
+
+                B, T, F = x.shape
+                _, T_1, _ = take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft).shape
+                _, T_2, _ = take_per_row(x, crop_offset + crop_left, crop_eright - crop_left).shape
+
+                if self.ci:
+                    x_spt1 = transform_ci(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft), B, F, T_1)
+                    x_spt2 = transform_ci(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left), B, F, T_2)
+                else:
+                    x_spt1 = take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft)
+                    x_spt2 = take_per_row(x, crop_offset + crop_left, crop_eright - crop_left)
                 
-                out1 = self._net(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft))
+                out1 = self._net(x_spt1)
+                out1 = transform_inv_ci(out1, B, F, T_1, self.output_dims) if self.ci else out1
                 out1 = out1[:, -crop_l:]
                 
-                out2 = self._net(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left))
+                out2 = self._net(x_spt2)
+                out2 = transform_inv_ci(out2, B, F, T_2, self.output_dims) if self.ci else out2
                 out2 = out2[:, :crop_l]
                 
                 loss = hierarchical_contrastive_loss(
@@ -189,6 +204,11 @@ class TS2Vec:
         return loss_log
     
     def _eval_with_pooling(self, x, mask=None, slicing=None, encoding_window=None):
+        B, T, F = x.shape
+
+        if self.ci:
+            x = transform_ci(x, B, F, T)
+
         out = self.net(x.to(self.device, non_blocking=True), mask)
         if encoding_window == 'full_series':
             if slicing is not None:
