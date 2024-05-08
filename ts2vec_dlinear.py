@@ -150,6 +150,10 @@ class TS2VecDlinear:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
                     x = x[:, window_offset : window_offset + self.max_train_length]
                     y = y[:, window_offset : window_offset + self.max_train_length]
+
+                # x = x[:, :, self.n_time_cols:]
+                # y = y[:, :, self.n_time_cols:]
+
                 x = x.to(self.device)
                 y = y.to(self.device)
 
@@ -252,18 +256,21 @@ class TS2VecDlinear:
         return loss_log
     
     def _eval_with_pooling(self, x, y, mask=None, slicing=None, encoding_window=None):
-        B, T, F = x.shape
+        # x = x[:, :, self.n_time_cols:]
+        # y = y[:, :, self.n_time_cols:]
+
+        B, T, Fe = x.shape
 
         if self.ci:
-            x = transform_ci(x, B, F, T)
-            y = transform_ci(x, B, F, T)
+            x = transform_ci(x, B, Fe, T)
+            y = transform_ci(x, B, Fe, T)
 
         out1 = self.net_err(x.to(self.device, non_blocking=True), mask)
         out2 = self.net_avg(y.to(self.device, non_blocking=True), mask)
 
         if self.ci:
-            out1 = transform_inv_ci(out1, B, F, T, self.output_dims)
-            out2 = transform_inv_ci(out2, B, F, T, self.output_dims)
+            out1 = transform_inv_ci(out1, B, Fe, T, self.output_dims)
+            out2 = transform_inv_ci(out2, B, Fe, T, self.output_dims)
 
         if encoding_window == 'full_series':
             if slicing is not None:

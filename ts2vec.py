@@ -130,6 +130,9 @@ class TS2Vec:
                 if self.max_train_length is not None and x.size(1) > self.max_train_length:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
                     x = x[:, window_offset : window_offset + self.max_train_length]
+
+                # x = x[:, :, self.n_time_cols:]
+
                 x = x.to(self.device)
                 
                 ts_l = x.size(1)
@@ -198,52 +201,58 @@ class TS2Vec:
         return loss_log
     
     def _eval_with_pooling(self, x, mask=None, slicing=None, encoding_window=None):
-        B, T, F = x.shape
+        # x = x[:, :, self.n_time_cols:]
+
+        B, T, Fe = x.shape
 
         if self.ci:
-            x = transform_ci(x, B, F, T)
+            x = transform_ci(x, B, Fe, T)
 
         out = self.net(x.to(self.device, non_blocking=True), mask)
+
+        if self.ci:
+            out = transform_inv_ci(out, B, Fe, T, self.output_dims)
+
         if encoding_window == 'full_series':
             if slicing is not None:
                 out = out[:, slicing]
             out = F.max_pool1d(
                 out.transpose(1, 2),
-                kernel_size = out.size(1),
+                kernel_size=out.size(1),
             ).transpose(1, 2)
-            
+
         elif isinstance(encoding_window, int):
             out = F.max_pool1d(
                 out.transpose(1, 2),
-                kernel_size = encoding_window,
-                stride = 1,
-                padding = encoding_window // 2
+                kernel_size=encoding_window,
+                stride=1,
+                padding=encoding_window // 2
             ).transpose(1, 2)
             if encoding_window % 2 == 0:
                 out = out[:, :-1]
             if slicing is not None:
                 out = out[:, slicing]
-            
+
         elif encoding_window == 'multiscale':
             p = 0
             reprs = []
             while (1 << p) + 1 < out.size(1):
                 t_out = F.max_pool1d(
                     out.transpose(1, 2),
-                    kernel_size = (1 << (p + 1)) + 1,
-                    stride = 1,
-                    padding = 1 << p
+                    kernel_size=(1 << (p + 1)) + 1,
+                    stride=1,
+                    padding=1 << p
                 ).transpose(1, 2)
                 if slicing is not None:
                     t_out = t_out[:, slicing]
                 reprs.append(t_out)
                 p += 1
             out = torch.cat(reprs, dim=-1)
-            
+
         else:
             if slicing is not None:
                 out = out[:, slicing]
-            
+
         return out.cpu()
     
     def encode(self, data, mask=None, encoding_window=None, causal=False, sliding_length=None, sliding_padding=0, batch_size=None):
