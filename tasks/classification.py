@@ -3,16 +3,11 @@ from . import _eval_protocols as eval_protocols
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import average_precision_score
 
-def eval_classification(model, train_data, train_labels, test_data, test_labels, ci, eval_protocol='linear'):
+def eval_classification(model, train_data, train_labels, test_data, test_labels, eval_protocol='linear'):
     assert train_labels.ndim == 1 or train_labels.ndim == 2
-    if not ci:
-        train_repr = model.encode(train_data, encoding_window='full_series' if train_labels.ndim == 1 else None)
-        test_repr = model.encode(test_data, encoding_window='full_series' if train_labels.ndim == 1 else None)
-    else:
-        train_repr = model.encode_ci(train_data, encoding_window='full_series' if train_labels.ndim == 1 else None)
-        test_repr = model.encode_ci(test_data, encoding_window='full_series' if train_labels.ndim == 1 else None)
-        train_repr = train_repr.reshape(train_repr.shape[0], train_repr.shape[1]*train_repr.shape[2])
-        test_repr = test_repr.reshape(test_repr.shape[0], test_repr.shape[1]*test_repr.shape[2])
+
+    train_repr = model.encode(train_data, encoding_window='full_series' if train_labels.ndim == 1 else None)
+    test_repr = model.encode(test_data, encoding_window='full_series' if train_labels.ndim == 1 else None)
 
     if eval_protocol == 'linear':
         fit_clf = eval_protocols.fit_lr
