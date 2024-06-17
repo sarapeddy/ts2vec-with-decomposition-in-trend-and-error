@@ -29,10 +29,10 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
 # ci = config['PARAMETERS'].getboolean('ci')
 
 config = argparse.ArgumentParser()
-config.add_argument('--mode', type=str, default='feature')
+config.add_argument('--mode', type=str, default='ts2vec')
 config.add_argument('--path', type=str, default='/dati/home/sara.pederzoli/project/ts2vec-main')
-config.add_argument('--loader', type=str, default='UCR')
-config.add_argument('--dataset', type=str, default='FordA')
+config.add_argument('--loader', type=str, default='UEA')
+config.add_argument('--dataset', type=str, default='CharacterTrajectories')
 config.add_argument('--batch_size', type=int, default=8)
 config.add_argument('--ci', type=bool, default=True)
 
@@ -114,7 +114,7 @@ print(f"\nTraining time: {datetime.timedelta(seconds=t)}\n")
 
 print("\n----------------- EVAL CLASSIFICATION -------------------\n")
 
-out, eval_res = eval_classification(model, train_data, train_labels, test_data, test_labels, eval_protocol='svm', ci=ci)
+out, eval_res = eval_classification(model, train_data, train_labels, test_data, test_labels, eval_protocol='svm')
 
 print("\n----------------- FINAL RESULTS --------------------\n")
 

@@ -33,10 +33,10 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
 # seq_len = config['PARAMETERS'].get('seq_len')
 
 config = argparse.ArgumentParser()
-config.add_argument('--mode', type=str, default='feature')
+config.add_argument('--mode', type=str, default='ts2vec-Dlinear-one-loss')
 config.add_argument('--path', type=str, default='/dati/home/sara.pederzoli/project/ts2vec-main')
 config.add_argument('--dataset', type=str, default='ETTh1')
-config.add_argument('--ci', type=bool, default=True)
+config.add_argument('--ci', action='store_true', default=False)
 config.add_argument('--seq_len', type=int, default=None)
 
 args = config.parse_args()
@@ -95,6 +95,7 @@ if mode.lower() != 'DLinear'.lower():
 
     if not ci:
         input_dim = train_data.shape[-1]
+        # input_dim = train_data.shape[-1] - n_time_cols
         if mode == 'feature':
             input_dim = train_data.shape[-1] + train_data.shape[-1] - n_time_cols
 
@@ -111,9 +112,9 @@ if mode.lower() != 'DLinear'.lower():
 
     else:
         config = dict(
-            batch_size=1,
+            batch_size=4,
             lr=0.001,
-            output_dims=40,
+            output_dims=32,
             max_train_length=3000,
             ci=ci
         )
