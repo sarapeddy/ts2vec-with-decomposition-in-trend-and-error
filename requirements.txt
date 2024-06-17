@@ -1,7 +1,7 @@
-Bottleneck==1.3.2
+Bottleneck
 torch==1.8.1
 scipy==1.6.1
-numpy==1.19.2
+numpy==1.24.4
 statsmodels==0.12.2
-pandas==1.0.1
+pandas
 scikit_learn==0.24.2
