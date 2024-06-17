@@ -184,6 +184,10 @@ def load_forecast_csv(name, univar=False):
         train_slice = slice(None, 12*30*24*4)
         valid_slice = slice(12*30*24*4, 16*30*24*4)
         test_slice = slice(16*30*24*4, 20*30*24*4)
+    elif name.startswith('M5'):
+        train_slice = slice(None, int(0.8 * (1913 + 28)))
+        valid_slice = slice(int(0.8 * (1913 + 28)), 1913 + 28)
+        test_slice = slice(1913 + 28 - 1, 1913 + 2 * 28)
     else:
         train_slice = slice(None, int(0.6 * len(data)))
         valid_slice = slice(int(0.6 * len(data)), int(0.8 * len(data)))
