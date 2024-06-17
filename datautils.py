@@ -170,6 +170,8 @@ def load_forecast_csv(name, univar=False):
             data = data[['OT']]
         elif name == 'electricity':
             data = data[['MT_001']]
+        elif name == 'WTH':
+            data = data[['WetBulbCelsius']]
         else:
             data = data.iloc[:, -1:]
         
@@ -199,7 +201,7 @@ def load_forecast_csv(name, univar=False):
         dt_embed = np.expand_dims(dt_scaler.transform(dt_embed), 0)
         data = np.concatenate([np.repeat(dt_embed, data.shape[0], axis=0), data], axis=-1)
     
-    if name in ('ETTh1', 'ETTh2', 'electricity'):
+    if name in ('ETTh1', 'ETTh2', 'electricity', 'WTH'):
         pred_lens = [24, 48, 168, 336, 720]
     else:
         pred_lens = [24, 48, 96, 288, 672]
