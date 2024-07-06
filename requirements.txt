@@ -6,3 +6,4 @@ statsmodels==0.12.2
 pandas
 scikit_learn==0.24.2
 matplotlib
+sktime
