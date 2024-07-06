@@ -100,7 +100,8 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         test_pred = lr.predict(test_features)
         lr_infer_time[pred_len] = time.time() - t
 
-        ori_shape = test_data.shape[0], -1, pred_len, test_data.shape[2]
+        # ori_shape = test_data.shape[0], -1, pred_len, test_data.shape[2]
+        ori_shape = -1, test_data.shape[2]
         test_pred = test_pred.reshape(ori_shape)
         test_labels = test_labels.reshape(ori_shape)
 
