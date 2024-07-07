@@ -100,8 +100,8 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         test_pred = lr.predict(test_features)
         lr_infer_time[pred_len] = time.time() - t
 
-        # ori_shape = test_data.shape[0], -1, pred_len, test_data.shape[2]
-        ori_shape = -1, test_data.shape[2]
+        ori_shape = test_data.shape[0], -1, pred_len, test_data.shape[2]
+        # ori_shape = -1, test_data.shape[2]
         test_pred = test_pred.reshape(ori_shape)
         test_labels = test_labels.reshape(ori_shape)
 
@@ -111,8 +111,19 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         print("-----------------")
 
         if test_data.shape[0] > 1:
-            test_pred_inv = scaler.inverse_transform(test_pred.swapaxes(0, 3)).swapaxes(0, 3)
-            test_labels_inv = scaler.inverse_transform(test_labels.swapaxes(0, 3)).swapaxes(0, 3)
+            test_pred = test_pred.swapaxes(0, 3)
+            test_pred = test_pred.squeeze(0)
+            test_pred = test_pred.reshape(test_pred.shape[0] * test_pred.shape[1], test_pred.shape[2])
+
+            test_labels = test_labels.swapaxes(0, 3)
+            test_labels = test_labels.squeeze(0)
+            test_labels = test_labels.reshape(test_labels.shape[0]*test_labels.shape[1], test_labels.shape[2])
+
+            test_pred_inv = scaler.inverse_transform(test_pred)
+            test_labels_inv = scaler.inverse_transform(test_labels)
+
+            # test_pred_inv = scaler.inverse_transform(test_pred.swapaxes(0, 3)).swapaxes(0, 3)
+            # test_labels_inv = scaler.inverse_transform(test_labels.swapaxes(0, 3)).swapaxes(0, 3)
         else:
             test_pred_inv = scaler.inverse_transform(test_pred)
             test_labels_inv = scaler.inverse_transform(test_labels)
