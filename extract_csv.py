@@ -15,7 +15,7 @@ def find_eval_res_files(start_path):
                 matches.append(os.path.join(root, file))
     return matches
 
-def extract_data_from_file(file_path, type=None):
+def extract_data_from_file(file_path, data_type):
     """
     Extracts the accuracy and loss from the eval_res.json file.
     """
@@ -39,8 +39,8 @@ def extract_data_from_file(file_path, type=None):
             if 'forecasting' in args.directory:
                 for key in data.keys():
                     extract_data[model_name][match][key] ={
-                        'MAE': round(data[key][type]['MAE'], 4),
-                        'MSE': round(data[key][type]['MSE'], 4)
+                        'MAE': round(data[key][data_type]['MAE'], 4),
+                        'MSE': round(data[key][data_type]['MSE'], 4)
                     }
             elif 'classification' in args.directory:
                 extract_data[model_name][match] ={
@@ -141,7 +141,7 @@ def main(directory, output_csv, type):
 if __name__ == "__main__":
     parser = ArgumentParser(description='Insertion of correct path to save the csv')
     parser.add_argument('--directory', type=str, help='Directory where the eval_res.json files are located')
-    parser.add_argument('--type', type=str, default=None, help='Choose if you want raw or norm data')
+    parser.add_argument('--type', type=str, default='norm', help='Choose if you want raw or norm data')
     args = parser.parse_args()
     if args.type == 'norm':
         output_csv = "results.csv"  # Cambia il nome del file CSV se necessario
