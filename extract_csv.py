@@ -15,7 +15,7 @@ def find_eval_res_files(start_path):
                 matches.append(os.path.join(root, file))
     return matches
 
-def extract_data_from_file(file_path):
+def extract_data_from_file(file_path, type=None):
     """
     Extracts the accuracy and loss from the eval_res.json file.
     """
@@ -39,8 +39,8 @@ def extract_data_from_file(file_path):
             if 'forecasting' in args.directory:
                 for key in data.keys():
                     extract_data[model_name][match][key] ={
-                        'MAE': round(data[key]['norm']['MAE'], 4),
-                        'MSE': round(data[key]['norm']['MSE'], 4)
+                        'MAE': round(data[key][type]['MAE'], 4),
+                        'MSE': round(data[key][type]['MSE'], 4)
                     }
             elif 'classification' in args.directory:
                 extract_data[model_name][match] ={
@@ -118,12 +118,12 @@ def extract_rows_anomaly_detection(data_list):
     df.reset_index(inplace=True)
     return df
 
-def main(directory, output_csv):
+def main(directory, output_csv, type):
     """
     Extracts MAE e MSE from eval_res.json files and saves them in a CSV file.
     """
     files = find_eval_res_files(directory)
-    data_list = [extract_data_from_file(file) for file in files]
+    data_list = [extract_data_from_file(file, type) for file in files]
     data_list = [data for data in data_list if data is not None]  # Rimuovi eventuali None
 
     if 'forecasting' in args.directory:
@@ -141,6 +141,10 @@ def main(directory, output_csv):
 if __name__ == "__main__":
     parser = ArgumentParser(description='Insertion of correct path to save the csv')
     parser.add_argument('--directory', type=str, help='Directory where the eval_res.json files are located')
+    parser.add_argument('--type', type=str, default=None, help='Choose if you want raw or norm data')
     args = parser.parse_args()
-    output_csv = "results.csv"  # Cambia il nome del file CSV se necessario
-    main(f'./training/{args.directory}', output_csv)
+    if args.type == 'norm':
+        output_csv = "results.csv"  # Cambia il nome del file CSV se necessario
+    else:
+        output_csv = "results_raw.csv"
+    main(f'./training/{args.directory}', output_csv, args.type)
