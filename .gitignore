@@ -5,6 +5,8 @@ training/*
 scripts/_nohup
 .rsync-filter
 .idea
-config.ini
+config_forecasting.ini
+config_anomaly_detection.ini
+config_classification.ini
 venv
 
