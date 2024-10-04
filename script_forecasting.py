@@ -35,7 +35,7 @@ def create_model(type_of_train, dim, n_time_cols, current_device, configuration)
 
 config = argparse.ArgumentParser()
 config.add_argument('--mode', type=str, default='ts2vec-Dlinear-one-loss')
-config.add_argument('--path', type=str)
+config.add_argument('--path', type=str, default='/home/n269362/projects/ts2vec')
 config.add_argument('--dataset', type=str, default='WTH')
 config.add_argument('--ci', action='store_true', default=False)
 config.add_argument('--seq_len', type=int, default=None)
@@ -110,7 +110,7 @@ if mode.lower() != 'DLinear'.lower():
 
         # Train a TS2Vec model
         model = create_model(mode, input_dim, n_time_cols, device, config)
-        # model = TS2VecAblation(input_dims=input_dim, device=device, mode='ts2vec', n_time_cols=n_time_cols, **config)
+        # model = TS2VecAblation(input_dims=input_dim, device=device, mode='ts2vec-ablation-err', n_time_cols=n_time_cols, **config)
     else:
         config = dict(
             batch_size=4,
